@@ -158,9 +158,9 @@ tasks in `.agent/tasks/` are archived by hand into
 - Every project has a persisted task list with server-side URL pagination; project deletion can
   explicitly remove its tasks or leave them in place.
 - Tasks can start a new console session for planning; the session uses the configured Plan agent
-  and effective planning/after-planning prompts, with the composed multi-line prompt pasted and
-  submitted as one terminal input. When its agent exits, the plan session closes and is removed
-  automatically.
+  and effective planning/after-planning prompts, with the composed multi-line first prompt passed
+  to the agent CLI as a startup argument. Follow-up prompts are pasted into the running session.
+  When its agent exits, the plan session closes and is removed automatically.
 - A single `/tasks` screen provides server-rendered, cross-project task pagination and optional project and status filters; it defaults to open tasks, which can be completed and reopened from the list or detail page. `/tasks/new` creates tasks for any saved project. Per-project list and creation URLs redirect to these unified screens.
 
 ## Agent Harness Configuration

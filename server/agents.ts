@@ -5,6 +5,10 @@ const AGENT_COMMANDS: Record<AgentId, { command: string; args: string[] }> = {
   claude: { command: "claude", args: [] },
 };
 
-export function getAgentCommand(agentId: AgentId) {
-  return AGENT_COMMANDS[agentId];
+export function getAgentCommand(agentId: AgentId, initialPrompt?: string) {
+  const definition = AGENT_COMMANDS[agentId];
+  return {
+    ...definition,
+    args: initialPrompt?.trim() ? [...definition.args, initialPrompt] : definition.args,
+  };
 }

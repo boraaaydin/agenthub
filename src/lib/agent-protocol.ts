@@ -11,7 +11,15 @@ export type SessionSummary = {
 };
 
 export type ClientMessage =
-  | { type: "start"; agent: AgentId; cwd: string; cols: number; rows: number; autoClose?: boolean }
+  | {
+      type: "start";
+      agent: AgentId;
+      cwd: string;
+      cols: number;
+      rows: number;
+      autoClose?: boolean;
+      initialPrompt?: string;
+    }
   | { type: "attach"; sessionId: string; cols: number; rows: number }
   | { type: "input"; sessionId: string; data: string }
   | { type: "resize"; sessionId: string; cols: number; rows: number }
@@ -49,7 +57,11 @@ export function isClientMessage(value: unknown): value is ClientMessage {
         typeof message.cwd === "string" &&
         isDimension(message.cols, 500) &&
         isDimension(message.rows, 500) &&
-        (message.autoClose === undefined || typeof message.autoClose === "boolean")
+        (message.autoClose === undefined || typeof message.autoClose === "boolean") &&
+        (message.initialPrompt === undefined ||
+          (typeof message.initialPrompt === "string" &&
+            message.initialPrompt.trim().length > 0 &&
+            message.initialPrompt.length <= 100_000))
       );
     case "attach":
       return (

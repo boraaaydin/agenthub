@@ -80,6 +80,7 @@ async function handleClientMessage(socket: WebSocket, message: ClientMessage) {
           message.cols,
           message.rows,
           message.autoClose,
+          message.initialPrompt,
         );
         send(socket, { type: "started", session: toSummary(session) });
         broadcastSessions();

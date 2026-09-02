@@ -42,7 +42,6 @@ export function AgentConsole() {
   const terminalRef = useRef<Terminal | null>(null);
   const activeSessionRef = useRef<string | null>(null);
   const attachedSessionRef = useRef<string | null>(null);
-  const queuedPromptRef = useRef<{ sessionId: string | null; prompt: string } | null>(null);
   const pendingSessionIdRef = useRef<string | null>(null);
   const selectionInitializedRef = useRef(false);
   const projectSelectionInitializedRef = useRef(false);
@@ -90,21 +89,11 @@ export function AgentConsole() {
 
     terminalRef.current?.write(data);
     attachedSessionRef.current = sessionId;
-    const queuedPrompt = queuedPromptRef.current;
-    if (queuedPrompt?.sessionId === sessionId) {
-      const [paste, submit] = terminalSubmission(queuedPrompt.prompt);
-      sendRef.current({ type: "input", sessionId, data: paste });
-      sendRef.current({ type: "input", sessionId, data: submit });
-      queuedPromptRef.current = null;
-    }
   }, []);
 
   const onStarted = useCallback((session: SessionSummary) => {
     pendingSessionIdRef.current = session.id;
     activeSessionRef.current = session.id;
-    if (queuedPromptRef.current) {
-      queuedPromptRef.current.sessionId = session.id;
-    }
     setIsCreating(false);
     setNewSession(false);
     setSelectedSessionId(session.id);
@@ -117,7 +106,6 @@ export function AgentConsole() {
   }, []);
 
   const onError = useCallback((message: string) => {
-    queuedPromptRef.current = null;
     setIsCreating(false);
     setError(message);
   }, []);
@@ -214,7 +202,6 @@ export function AgentConsole() {
     setError("");
     setNewSession(true);
     setSelectedSessionId(null);
-    queuedPromptRef.current = { sessionId: null, prompt: nextPrompt };
     if (!send({
       type: "start",
       agent: nextAgent,
@@ -222,8 +209,8 @@ export function AgentConsole() {
       cols: terminalRef.current?.cols ?? 80,
       rows: terminalRef.current?.rows ?? 24,
       autoClose,
+      initialPrompt: nextPrompt,
     })) {
-      queuedPromptRef.current = null;
       setError("The terminal connection is not ready. Try again in a moment.");
       return false;
     }

@@ -37,7 +37,14 @@ export class SessionRegistry {
       .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
   }
 
-  async create(agent: AgentId, cwdInput: string, cols: number, rows: number, autoClose = false) {
+  async create(
+    agent: AgentId,
+    cwdInput: string,
+    cols: number,
+    rows: number,
+    autoClose = false,
+    initialPrompt?: string,
+  ) {
     if (this.sessions.size >= MAX_SESSIONS) {
       throw new Error(`You can keep up to ${MAX_SESSIONS} sessions. Dismiss an exited session before starting another.`);
     }
@@ -47,7 +54,7 @@ export class SessionRegistry {
       throw new Error(`You can keep up to ${MAX_SESSIONS} sessions. Dismiss an exited session before starting another.`);
     }
 
-    const definition = getAgentCommand(agent);
+    const definition = getAgentCommand(agent, initialPrompt);
     const pty = spawn(definition.command, definition.args, {
       name: "xterm-color",
       cols,
