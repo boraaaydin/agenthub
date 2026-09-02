@@ -207,7 +207,7 @@ export function AgentConsole() {
   const canStart = connected && !isCreating && !isLoadingProjects && Boolean(selectedProject) && prompt.trim().length > 0;
   const canSend = connected && activeSession?.state === "running" && prompt.trim().length > 0;
 
-  const startSession = useCallback((nextAgent: AgentId, project: ConsoleProject, nextPrompt: string) => {
+  const startSession = useCallback((nextAgent: AgentId, project: ConsoleProject, nextPrompt: string, autoClose = false) => {
     activeSessionRef.current = null;
     attachedSessionRef.current = null;
     terminalRef.current?.clear();
@@ -221,6 +221,7 @@ export function AgentConsole() {
       cwd: project.path,
       cols: terminalRef.current?.cols ?? 80,
       rows: terminalRef.current?.rows ?? 24,
+      autoClose,
     })) {
       queuedPromptRef.current = null;
       setError("The terminal connection is not ready. Try again in a moment.");

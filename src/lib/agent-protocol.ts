@@ -11,7 +11,7 @@ export type SessionSummary = {
 };
 
 export type ClientMessage =
-  | { type: "start"; agent: AgentId; cwd: string; cols: number; rows: number }
+  | { type: "start"; agent: AgentId; cwd: string; cols: number; rows: number; autoClose?: boolean }
   | { type: "attach"; sessionId: string; cols: number; rows: number }
   | { type: "input"; sessionId: string; data: string }
   | { type: "resize"; sessionId: string; cols: number; rows: number }
@@ -48,7 +48,8 @@ export function isClientMessage(value: unknown): value is ClientMessage {
         isAgentId(message.agent) &&
         typeof message.cwd === "string" &&
         isDimension(message.cols, 500) &&
-        isDimension(message.rows, 500)
+        isDimension(message.rows, 500) &&
+        (message.autoClose === undefined || typeof message.autoClose === "boolean")
       );
     case "attach":
       return (

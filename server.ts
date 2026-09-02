@@ -74,7 +74,13 @@ async function handleClientMessage(socket: WebSocket, message: ClientMessage) {
   switch (message.type) {
     case "start": {
       try {
-        const session = await sessions.create(message.agent, message.cwd, message.cols, message.rows);
+        const session = await sessions.create(
+          message.agent,
+          message.cwd,
+          message.cols,
+          message.rows,
+          message.autoClose,
+        );
         send(socket, { type: "started", session: toSummary(session) });
         broadcastSessions();
       } catch (error) {

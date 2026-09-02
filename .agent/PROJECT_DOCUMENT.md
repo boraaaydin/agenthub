@@ -158,7 +158,8 @@ tasks in `.agent/tasks/` are archived by hand into
   explicitly remove its tasks or leave them in place.
 - Tasks can start a new console session for planning; the session uses the configured Plan agent
   and effective planning/after-planning prompts, with the composed multi-line prompt pasted and
-  submitted as one terminal input.
+  submitted as one terminal input. When its agent exits, the plan session closes and is removed
+  automatically.
 - A cross-project task list provides server-rendered pagination and an optional project filter.
 
 ## Agent Harness Configuration

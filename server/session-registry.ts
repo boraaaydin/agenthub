@@ -13,6 +13,8 @@ const MAX_SESSIONS = 12;
 export type TerminalSession = SessionSummary & {
   pty: IPty;
   buffer: string;
+  autoClose: boolean;
+  stoppedByUser: boolean;
 };
 
 type SessionRegistryOptions = {
@@ -35,7 +37,7 @@ export class SessionRegistry {
       .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
   }
 
-  async create(agent: AgentId, cwdInput: string, cols: number, rows: number) {
+  async create(agent: AgentId, cwdInput: string, cols: number, rows: number, autoClose = false) {
     if (this.sessions.size >= MAX_SESSIONS) {
       throw new Error(`You can keep up to ${MAX_SESSIONS} sessions. Dismiss an exited session before starting another.`);
     }
@@ -65,6 +67,8 @@ export class SessionRegistry {
       createdAt: new Date().toISOString(),
       pty,
       buffer: "",
+      autoClose,
+      stoppedByUser: false,
     };
 
     pty.onData((data) => {
@@ -77,6 +81,9 @@ export class SessionRegistry {
       }
 
       session.state = "exited";
+      if (session.autoClose && !session.stoppedByUser) {
+        this.sessions.delete(session.id);
+      }
       this.options.onExit(session, exitCode);
     });
 
@@ -90,6 +97,7 @@ export class SessionRegistry {
       return false;
     }
 
+    session.stoppedByUser = true;
     session.state = "exited";
     session.pty.kill();
     return true;

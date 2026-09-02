@@ -12,4 +12,6 @@ Use AgentHub's local task workflow only:
 - Active tasks: `.agent/tasks/`
 - Completed-task decision log: `.agent/tasks-archived/YYYY/MM/DD/`
 
-Do not create, reference, comment on, or otherwise interact with GitHub issues. End by reporting the final task path, dependencies, and any assumptions recorded in the task.
+Do not create, reference, comment on, or otherwise interact with GitHub issues.
+
+6. End by reporting the final task path, dependencies, and any assumptions recorded in the task. As your very last action after that report, end your own CLI process so the AgentHub session closes: run `kill -TERM $PPID` from your shell tool, or use the CLI's own exit command if it can be invoked from within this session.
