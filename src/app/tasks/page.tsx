@@ -9,6 +9,7 @@ import {
   TASKS_PAGE_SIZE,
   type Task,
 } from "@/lib/tasks-store";
+import { planConsoleHref } from "@/lib/task-plan";
 
 export const dynamic = "force-dynamic";
 
@@ -49,14 +50,24 @@ function TaskRows({ projectNames, tasks }: { projectNames: Map<string, string>; 
           );
 
           return (
-            <li key={task.id}>
+            <li key={task.id} className="relative">
               {projectName ? (
-                <Link
-                  href={`/projects/${task.projectId}/tasks/${task.id}`}
-                  className="block px-4 py-4 transition hover:bg-slate-50 focus:outline-none focus:ring-3 focus:ring-inset focus:ring-sky-100 sm:px-5"
-                >
-                  {row}
-                </Link>
+                <>
+                  <Link
+                    href={`/projects/${task.projectId}/tasks/${task.id}`}
+                    className="block px-4 py-4 transition hover:bg-slate-50 focus:outline-none focus:ring-3 focus:ring-inset focus:ring-sky-100 after:absolute after:inset-0 sm:px-5 sm:pr-36"
+                  >
+                    {row}
+                  </Link>
+                  <div className="relative z-10 px-4 pb-4 sm:absolute sm:right-5 sm:top-4 sm:px-0 sm:pb-0">
+                    <Link
+                      href={planConsoleHref(task.projectId, task.id)}
+                      className="inline-flex h-9 items-center rounded-lg border border-sky-200 bg-white px-3 text-sm font-medium text-sky-800 shadow-sm transition hover:border-sky-300 hover:bg-sky-50 focus:outline-none focus:ring-3 focus:ring-sky-100"
+                    >
+                      Create plan
+                    </Link>
+                  </div>
+                </>
               ) : (
                 <div className="px-4 py-4 sm:px-5">{row}</div>
               )}

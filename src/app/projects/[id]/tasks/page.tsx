@@ -9,6 +9,7 @@ import {
   TASKS_PAGE_SIZE,
   type Task,
 } from "@/lib/tasks-store";
+import { planConsoleHref } from "@/lib/task-plan";
 
 export const dynamic = "force-dynamic";
 
@@ -29,10 +30,10 @@ function TaskRows({ projectId, tasks }: { projectId: string; tasks: Task[] }) {
     <section aria-label="Project tasks" className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       <ul className="divide-y divide-slate-200">
         {tasks.map((task) => (
-          <li key={task.id}>
+          <li key={task.id} className="relative">
             <Link
               href={`/projects/${projectId}/tasks/${task.id}`}
-              className="block px-4 py-4 transition hover:bg-slate-50 focus:outline-none focus:ring-3 focus:ring-inset focus:ring-sky-100 sm:px-5"
+              className="block px-4 py-4 transition hover:bg-slate-50 focus:outline-none focus:ring-3 focus:ring-inset focus:ring-sky-100 after:absolute after:inset-0 sm:px-5 sm:pr-36"
             >
               <div className="flex flex-col gap-2 sm:flex-row sm:items-baseline sm:justify-between sm:gap-5">
                 <div className="flex min-w-0 items-baseline gap-2">
@@ -45,6 +46,14 @@ function TaskRows({ projectId, tasks }: { projectId: string; tasks: Task[] }) {
               </div>
               <p className="mt-1.5 max-w-3xl text-sm leading-6 text-slate-600">{taskPreview(task.detail)}</p>
             </Link>
+            <div className="relative z-10 px-4 pb-4 sm:absolute sm:right-5 sm:top-4 sm:px-0 sm:pb-0">
+              <Link
+                href={planConsoleHref(projectId, task.id)}
+                className="inline-flex h-9 items-center rounded-lg border border-sky-200 bg-white px-3 text-sm font-medium text-sky-800 shadow-sm transition hover:border-sky-300 hover:bg-sky-50 focus:outline-none focus:ring-3 focus:ring-sky-100"
+              >
+                Create plan
+              </Link>
+            </div>
           </li>
         ))}
       </ul>

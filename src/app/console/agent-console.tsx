@@ -8,9 +8,11 @@ import type { Terminal } from "@xterm/xterm";
 import { BrandLink } from "../brand-link";
 import { AGENTS, DEFAULT_AGENT_ID, getAgent, type AgentId } from "@/lib/agents";
 import type { ClientMessage, SessionSummary } from "@/lib/agent-protocol";
+import { terminalSubmission } from "@/lib/terminal-input";
 import { SessionSidebar } from "./session-sidebar";
 import { SessionTerminal } from "./session-terminal";
 import { useAgentSocket } from "./use-agent-socket";
+import { usePlanRun } from "./use-plan-run";
 
 type ConsoleProject = {
   id: string;
@@ -45,6 +47,8 @@ export function AgentConsole() {
   const selectionInitializedRef = useRef(false);
   const projectSelectionInitializedRef = useRef(false);
   const initialProjectIdRef = useRef(searchParams.get("projectId"));
+  const initialPlanProjectIdRef = useRef(searchParams.get("planProjectId"));
+  const initialPlanTaskIdRef = useRef(searchParams.get("planTaskId"));
   const sendRef = useRef<(message: ClientMessage) => boolean>(sendPlaceholder);
 
   const onSessions = useCallback((nextSessions: SessionSummary[]) => {
@@ -88,7 +92,9 @@ export function AgentConsole() {
     attachedSessionRef.current = sessionId;
     const queuedPrompt = queuedPromptRef.current;
     if (queuedPrompt?.sessionId === sessionId) {
-      sendRef.current({ type: "input", sessionId, data: `${queuedPrompt.prompt}\r` });
+      const [paste, submit] = terminalSubmission(queuedPrompt.prompt);
+      sendRef.current({ type: "input", sessionId, data: paste });
+      sendRef.current({ type: "input", sessionId, data: submit });
       queuedPromptRef.current = null;
     }
   }, []);
@@ -201,6 +207,31 @@ export function AgentConsole() {
   const canStart = connected && !isCreating && !isLoadingProjects && Boolean(selectedProject) && prompt.trim().length > 0;
   const canSend = connected && activeSession?.state === "running" && prompt.trim().length > 0;
 
+  const startSession = useCallback((nextAgent: AgentId, project: ConsoleProject, nextPrompt: string) => {
+    activeSessionRef.current = null;
+    attachedSessionRef.current = null;
+    terminalRef.current?.clear();
+    setError("");
+    setNewSession(true);
+    setSelectedSessionId(null);
+    queuedPromptRef.current = { sessionId: null, prompt: nextPrompt };
+    if (!send({
+      type: "start",
+      agent: nextAgent,
+      cwd: project.path,
+      cols: terminalRef.current?.cols ?? 80,
+      rows: terminalRef.current?.rows ?? 24,
+    })) {
+      queuedPromptRef.current = null;
+      setError("The terminal connection is not ready. Try again in a moment.");
+      return false;
+    }
+
+    setIsCreating(true);
+    setPrompt("");
+    return true;
+  }, [send]);
+
   function selectSession(sessionId: string) {
     activeSessionRef.current = sessionId;
     setError("");
@@ -244,28 +275,30 @@ export function AgentConsole() {
         setError(isLoadingProjects ? "Saved projects are still loading." : "Select a saved project before starting a session.");
         return;
       }
-      queuedPromptRef.current = { sessionId: null, prompt: value };
-      if (!send({
-        type: "start",
-        agent,
-        cwd: selectedProject.path,
-        cols: terminalRef.current?.cols ?? 80,
-        rows: terminalRef.current?.rows ?? 24,
-      })) {
-        queuedPromptRef.current = null;
-        setError("The terminal connection is not ready. Try again in a moment.");
-        return;
-      }
-      setIsCreating(true);
-      setPrompt("");
+      startSession(agent, selectedProject, value);
       return;
     }
 
     if (activeSession.state === "running") {
-      send({ type: "input", sessionId: activeSession.id, data: `${value}\r` });
+      const [paste, submit] = terminalSubmission(value);
+      send({ type: "input", sessionId: activeSession.id, data: paste });
+      send({ type: "input", sessionId: activeSession.id, data: submit });
       setPrompt("");
     }
   }
+
+  usePlanRun({
+    planProjectIdRef: initialPlanProjectIdRef,
+    planTaskIdRef: initialPlanTaskIdRef,
+    connected,
+    isLoadingProjects,
+    terminalReady,
+    projects,
+    setAgent,
+    setSelectedProjectId,
+    setError,
+    startSession,
+  });
 
   return (
     <main className="min-h-screen bg-[#f4f6fa] px-4 py-6 text-slate-900 sm:px-6 sm:py-10">

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 
 import { BrandLink } from "../../../../brand-link";
+import { planConsoleHref } from "@/lib/task-plan";
 
 type Task = {
   id: number;
@@ -114,6 +115,12 @@ export default function TaskDetail({ projectName, task }: TaskDetailProps) {
           </div>
           <h1 className="mt-4 break-words text-3xl font-semibold tracking-[-0.03em]">{task.title}</h1>
           <p className="mt-1 text-sm leading-6 text-slate-600">Update this task&apos;s title and detail.</p>
+          <Link
+            href={planConsoleHref(task.projectId, task.id)}
+            className="mt-4 inline-flex h-10 items-center rounded-xl border border-sky-200 bg-white px-4 text-sm font-medium text-sky-800 shadow-sm transition hover:border-sky-300 hover:bg-sky-50 focus:outline-none focus:ring-3 focus:ring-sky-100"
+          >
+            Create plan
+          </Link>
         </header>
 
         <form onSubmit={saveTask} className="mt-8 space-y-6" noValidate>

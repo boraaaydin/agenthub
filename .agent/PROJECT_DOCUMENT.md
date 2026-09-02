@@ -59,7 +59,7 @@ by the server-only `src/lib/default-settings-prompts.ts` module. The code-define
 `src/lib/agents.ts` and the prompt descriptors live in `src/lib/settings-prompts.ts`. The console selects a saved project and its agent per new session (Codex
 by default), while the settings remain available for future task and plan flows. These files
 survive server restarts; agent sessions remain in-memory only and end when the server restarts.
-Project records can be edited or deleted from their detail page.
+Project records can be edited or deleted from their detail page. Creating a plan from a task composes the effective Task planning and After planning prompts (saved text when present, otherwise the built-in Markdown defaults) with that task's title and detail, then starts the configured Plan agent in the task's project directory through the console.
 
 ### Open decisions
 
@@ -101,9 +101,10 @@ The same rule is carried in the tool-managed `<!-- BEGIN:nextjs-agent-rules -->`
 ```
 src/app/                         # Next.js application
 ├── api/projects/                 # Route Handlers for persisted project metadata
-│   └── [id]/tasks/               # Route Handlers for per-project tasks
+│   └── [id]/tasks/               # Route Handlers for per-project tasks, including plan-prompt
 ├── api/settings/                 # Route Handler for global agent defaults
 ├── console/                      # Multi-session console route and colocated client components
+│   └── use-plan-run.ts           # Starts a plan session from task URL parameters
 ├── projects/                     # Projects list, creation, and detail routes
 │   ├── page.tsx                  # Projects list page
 │   └── [id]/                     # Editable project detail and task-list routes
@@ -155,6 +156,9 @@ tasks in `.agent/tasks/` are archived by hand into
   individual in-memory scrollback until dismissed after exit.
 - Every project has a persisted task list with server-side URL pagination; project deletion can
   explicitly remove its tasks or leave them in place.
+- Tasks can start a new console session for planning; the session uses the configured Plan agent
+  and effective planning/after-planning prompts, with the composed multi-line prompt pasted and
+  submitted as one terminal input.
 - A cross-project task list provides server-rendered pagination and an optional project filter.
 
 ## Agent Harness Configuration
