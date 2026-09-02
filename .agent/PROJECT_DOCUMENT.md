@@ -107,6 +107,7 @@ src/app/                         # Next.js application
 │   └── [id]/                     # Editable project detail and task-list routes
 │       └── tasks/                # Paginated task list, creation, and detail routes
 ├── settings/                     # Global Task and Plan agent settings
+├── tasks/                        # Global task list with a project filter
 ├── agent-console.tsx             # Client console UI
 └── page.tsx                      # Header-only home page
 src/lib/
@@ -150,6 +151,7 @@ tasks in `.agent/tasks/` are archived by hand into
   individual in-memory scrollback until dismissed after exit.
 - Every project has a persisted task list with server-side URL pagination; project deletion can
   explicitly remove its tasks or leave them in place.
+- A cross-project task list provides server-rendered pagination and an optional project filter.
 
 ## Agent Harness Configuration
 

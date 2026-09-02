@@ -128,25 +128,39 @@ function normalizePageSize(pageSize: number): number {
   return Number.isFinite(pageSize) && pageSize >= 1 ? Math.floor(pageSize) : TASKS_PAGE_SIZE;
 }
 
-export async function listProjectTasks(
-  projectId: string,
-  { page, pageSize }: PaginationInput,
-): Promise<PaginatedTasks> {
-  const { tasks } = await readDocument();
+function paginateTasks(
+  tasks: Task[],
+  { page, pageSize, projectId }: PaginationInput & { projectId?: string },
+): PaginatedTasks {
   const normalizedPage = normalizePage(page);
   const normalizedPageSize = normalizePageSize(pageSize);
-  const projectTasks = tasks
-    .filter((task) => task.projectId === projectId)
+  const filteredTasks = tasks
+    .filter((task) => projectId === undefined || task.projectId === projectId)
     .sort((first, second) => second.createdAt.localeCompare(first.createdAt));
-  const total = projectTasks.length;
+  const total = filteredTasks.length;
 
   return {
-    tasks: projectTasks.slice((normalizedPage - 1) * normalizedPageSize, normalizedPage * normalizedPageSize),
+    tasks: filteredTasks.slice((normalizedPage - 1) * normalizedPageSize, normalizedPage * normalizedPageSize),
     page: normalizedPage,
     pageSize: normalizedPageSize,
     total,
     totalPages: Math.ceil(total / normalizedPageSize),
   };
+}
+
+export async function listProjectTasks(
+  projectId: string,
+  { page, pageSize }: PaginationInput,
+): Promise<PaginatedTasks> {
+  const { tasks } = await readDocument();
+  return paginateTasks(tasks, { page, pageSize, projectId });
+}
+
+export async function listAllTasks(
+  { page, pageSize, projectId }: PaginationInput & { projectId?: string },
+): Promise<PaginatedTasks> {
+  const { tasks } = await readDocument();
+  return paginateTasks(tasks, { page, pageSize, projectId });
 }
 
 export async function getTask(projectId: string, taskId: number): Promise<Task | null> {
