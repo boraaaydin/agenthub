@@ -25,6 +25,7 @@ type TaskDetailProps = {
 export default function TaskDetail({ projectName, task }: TaskDetailProps) {
   const router = useRouter();
   const taskListPath = `/projects/${task.projectId}/tasks`;
+  const taskApiPath = `/api/projects/${task.projectId}/tasks/${task.id}`;
   const [title, setTitle] = useState(task.title);
   const [detail, setDetail] = useState(task.detail);
   const [error, setError] = useState("");
@@ -51,7 +52,7 @@ export default function TaskDetail({ projectName, task }: TaskDetailProps) {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch(`${taskListPath}/${task.id}`, {
+      const response = await fetch(taskApiPath, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title, detail }),
@@ -81,7 +82,7 @@ export default function TaskDetail({ projectName, task }: TaskDetailProps) {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch(`${taskListPath}/${task.id}`, { method: "DELETE" });
+      const response = await fetch(taskApiPath, { method: "DELETE" });
       const body = (await response.json()) as ApiError;
 
       if (!response.ok) {
