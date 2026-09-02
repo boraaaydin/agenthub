@@ -7,6 +7,8 @@ import {
   type ClientMessage,
   type ServerMessage,
 } from "./src/lib/agent-protocol";
+import { getAgent } from "./src/lib/agents";
+import { readSettings } from "./src/lib/settings-store";
 import { SessionRegistry } from "./server/session-registry";
 
 const port = Number.parseInt(process.env.PORT ?? "3000", 10);
@@ -83,17 +85,23 @@ app.prepare().then(() => {
 async function handleClientMessage(socket: WebSocket, message: ClientMessage) {
   switch (message.type) {
     case "start": {
-      if (sessions.getActiveSession() || sessions.isStarting()) {
+      const activeSession = sessions.getActiveSession();
+      if (activeSession || sessions.isStarting()) {
+        const activeAgent = activeSession ? getAgent(activeSession.agent) : null;
         send(socket, {
           type: "error",
-          message: "A Codex session is already running. Stop it before starting another.",
+          message: activeAgent
+            ? `A ${activeAgent.label} session is already running. Stop it before starting another.`
+            : "An agent session is already starting. Try again in a moment.",
         });
         return;
       }
 
       broadcast({ type: "status", state: "starting" });
       try {
-        await sessions.start(message.cwd, message.cols, message.rows);
+        const settings = await readSettings();
+        const agent = getAgent(settings.taskAgent);
+        await sessions.start(message.cwd, message.cols, message.rows, agent);
         broadcast({ type: "status", state: "running" });
       } catch (error) {
         broadcast({ type: "status", state: "idle" });
@@ -104,7 +112,7 @@ async function handleClientMessage(socket: WebSocket, message: ClientMessage) {
     case "input": {
       const session = sessions.getActiveSession();
       if (!session) {
-        send(socket, { type: "error", message: "Start a Codex session before sending input." });
+        send(socket, { type: "error", message: "Start a session before sending input." });
         return;
       }
       session.pty.write(message.data);
@@ -161,7 +169,7 @@ function send(socket: WebSocket, message: ServerMessage) {
 }
 
 function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "Could not start Codex.";
+  return error instanceof Error ? error.message : "Could not start the agent.";
 }
 
 let shuttingDown = false;

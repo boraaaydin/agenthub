@@ -66,6 +66,12 @@ export default async function Home() {
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <Link
+              href="/settings"
+              className="h-11 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium leading-none text-slate-800 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-3 focus:ring-sky-100"
+            >
+              Settings
+            </Link>
+            <Link
               href="/console"
               className="h-11 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium leading-none text-slate-800 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-3 focus:ring-sky-100"
             >

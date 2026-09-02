@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "AgentHub",
-  description: "Run a persistent Codex session from your browser.",
+  description: "Run a persistent coding-agent session from your browser.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

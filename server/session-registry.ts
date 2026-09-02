@@ -2,11 +2,13 @@ import { stat } from "node:fs/promises";
 import { resolve } from "node:path";
 import { spawn, type IPty } from "node-pty";
 
+import { getAgent, type Agent, type AgentId } from "../src/lib/agents";
+
 const MAX_BUFFER_SIZE = 200 * 1024;
 
 export type TerminalSession = {
   id: string;
-  agent: "codex";
+  agent: AgentId;
   cwd: string;
   pty: IPty;
   buffer: string;
@@ -31,16 +33,18 @@ export class SessionRegistry {
     return this.starting;
   }
 
-  async start(cwdInput: string, cols: number, rows: number) {
-    if (this.getActiveSession() || this.starting) {
-      throw new Error("A Codex session is already running. Stop it before starting another.");
+  async start(cwdInput: string, cols: number, rows: number, agent: Agent) {
+    const activeSession = this.getActiveSession();
+    if (activeSession || this.starting) {
+      const activeAgent = activeSession ? getAgent(activeSession.agent) : agent;
+      throw new Error(`A ${activeAgent.label} session is already running. Stop it before starting another.`);
     }
 
     this.starting = true;
 
     try {
-      const cwd = await validateDirectory(cwdInput);
-      const pty = spawn("codex", [], {
+      const cwd = await validateDirectory(cwdInput, agent.label);
+      const pty = spawn(agent.command, [...agent.args], {
         name: "xterm-color",
         cols,
         rows,
@@ -53,7 +57,7 @@ export class SessionRegistry {
       });
       const session: TerminalSession = {
         id: "default",
-        agent: "codex",
+        agent: agent.id,
         cwd,
         pty,
         buffer: "",
@@ -98,10 +102,10 @@ export class SessionRegistry {
   }
 }
 
-async function validateDirectory(cwdInput: string) {
+async function validateDirectory(cwdInput: string, agentLabel: string) {
   const suppliedPath = cwdInput.trim();
   if (!suppliedPath) {
-    throw new Error("Enter a working directory before starting Codex.");
+    throw new Error(`Enter a working directory before starting ${agentLabel}.`);
   }
 
   const cwd = resolve(suppliedPath);

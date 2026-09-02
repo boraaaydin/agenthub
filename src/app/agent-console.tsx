@@ -13,7 +13,7 @@ import type {
 
 type TerminalInstance = Terminal;
 
-export function AgentConsole() {
+export function AgentConsole({ taskAgentLabel }: { taskAgentLabel: string }) {
   const [cwd, setCwd] = useState("");
   const [prompt, setPrompt] = useState("");
   const [status, setStatus] = useState<SessionState>("idle");
@@ -150,7 +150,7 @@ export function AgentConsole() {
             setError(message.message);
             break;
           case "exit":
-            writeToTerminal(`\r\n\x1b[33mCodex exited with code ${message.code}.\x1b[0m\r\n`);
+            writeToTerminal(`\r\n\x1b[33m${taskAgentLabel} exited with code ${message.code}.\x1b[0m\r\n`);
             break;
         }
       };
@@ -171,7 +171,7 @@ export function AgentConsole() {
       socketRef.current?.close();
       socketRef.current = null;
     };
-  }, [send, sendSize, writeToTerminal]);
+  }, [send, sendSize, taskAgentLabel, writeToTerminal]);
 
   const sessionActive = status === "starting" || status === "running";
   const canSubmit = connected && prompt.trim().length > 0 && !sessionActive ? cwd.trim().length > 0 : connected && prompt.trim().length > 0;
@@ -186,7 +186,7 @@ export function AgentConsole() {
     setError("");
     if (status === "idle" || status === "stopped") {
       if (!cwd.trim()) {
-        setError("Enter a working directory before starting Codex.");
+        setError(`Enter a working directory before starting ${taskAgentLabel}.`);
         return;
       }
       queuedPromptRef.current = value;
@@ -221,7 +221,7 @@ export function AgentConsole() {
           <div>
             <h1 className="text-3xl font-semibold tracking-[-0.03em]">AgentHub</h1>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600">
-              Keep one Codex conversation open in the directory you choose.
+              Keep one {taskAgentLabel} conversation open in the directory you choose.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -238,7 +238,7 @@ export function AgentConsole() {
           </div>
         </header>
 
-        <section aria-label="Codex session controls">
+        <section aria-label={`${taskAgentLabel} session controls`}>
           <label className="block text-sm font-medium text-slate-800" htmlFor="working-directory">
             Working directory
           </label>
@@ -263,8 +263,8 @@ export function AgentConsole() {
           </div>
           <p className="mt-2 text-sm text-slate-600">
             {sessionActive
-              ? "This path is locked until you stop the current Codex session."
-              : "The path is checked on the server before Codex starts."}
+              ? `This path is locked until you stop the current ${taskAgentLabel} session.`
+              : `The path is checked on the server before ${taskAgentLabel} starts.`}
           </p>
         </section>
 
@@ -277,19 +277,19 @@ export function AgentConsole() {
             value={prompt}
             onChange={(event) => setPrompt(event.target.value)}
             rows={4}
-            placeholder="Describe what you want Codex to do…"
+            placeholder={`Describe what you want ${taskAgentLabel} to do…`}
             className="w-full resize-y rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm leading-6 outline-none transition placeholder:text-slate-400 focus:border-sky-600 focus:ring-3 focus:ring-sky-100"
           />
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm text-slate-600">
-              {status === "running" ? "Follow-up prompts continue this session." : "Your first prompt starts Codex."}
+              {status === "running" ? "Follow-up prompts continue this session." : `Your first prompt starts ${taskAgentLabel}.`}
             </p>
             <button
               type="submit"
               disabled={!canSubmit || status === "starting"}
               className="h-11 rounded-xl bg-sky-700 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-800 focus:outline-none focus:ring-3 focus:ring-sky-200 disabled:cursor-not-allowed disabled:bg-slate-300"
             >
-              {status === "starting" ? "Starting Codex…" : status === "running" ? "Send prompt" : "Start Codex"}
+              {status === "starting" ? `Starting ${taskAgentLabel}…` : status === "running" ? "Send prompt" : `Start ${taskAgentLabel}`}
             </button>
           </div>
         </form>
@@ -302,14 +302,14 @@ export function AgentConsole() {
 
         <div className="overflow-hidden rounded-[14px] border border-slate-800 bg-[#0b1220] shadow-[0_16px_36px_rgba(15,23,42,0.16)]">
           <div className="flex items-center justify-between border-b border-slate-700 px-4 py-2.5 text-xs text-slate-300">
-            <span>Codex terminal</span>
+            <span>{taskAgentLabel} terminal</span>
             <span className="capitalize">{status}</span>
           </div>
           <div
             ref={terminalHostRef}
             onClick={() => terminalRef.current?.focus()}
             className="h-[420px] cursor-text p-2 sm:h-[500px]"
-            aria-label="Live Codex terminal output"
+            aria-label={`Live ${taskAgentLabel} terminal output`}
             role="log"
           />
         </div>

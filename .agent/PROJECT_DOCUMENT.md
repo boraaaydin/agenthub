@@ -49,9 +49,12 @@ Node server  ──  node-pty  ──  claude / codex CLI process
   scrollback instead of seeing an empty screen. It is in-memory only; a server restart ends
   active sessions.
 
-Project metadata is persisted separately in a git-ignored `data/projects.json` file. This
-survives server restarts; agent sessions remain in-memory only and end when the server restarts.
-Project records can be edited or deleted from their detail page.
+Project metadata is persisted separately in a git-ignored `data/projects.json` file. Global
+Task and Plan agent defaults are persisted in git-ignored `data/settings.json`; the code-defined
+agent catalog lives in `src/lib/agents.ts`. The console reads the current Task agent when starting
+a session, so it spawns the configured agent rather than a hard-coded binary. These files survive
+server restarts; agent sessions remain in-memory only and end when the server restarts. Project
+records can be edited or deleted from their detail page.
 
 ### Open decisions
 
@@ -93,11 +96,17 @@ The same rule is carried in the tool-managed `<!-- BEGIN:nextjs-agent-rules -->`
 ```
 src/app/                         # Next.js application
 ├── api/projects/                 # Route Handlers for persisted project metadata
-├── console/                      # Codex console route
+├── api/settings/                 # Route Handler for global agent defaults
+├── console/                      # Configured-agent console route
 ├── projects/                     # Project creation and detail routes
 │   └── [id]/                     # Editable project detail route
+├── settings/                     # Global Task and Plan agent settings
+├── agent-console.tsx             # Client console UI
 └── page.tsx                      # Projects home page
-data/                             # Runtime JSON database (git-ignored)
+src/lib/
+├── agents.ts                     # Code-defined selectable agent catalog
+└── settings-store.ts             # Persisted global settings store
+data/                             # Runtime JSON database (git-ignored: projects.json, settings.json)
 .agent/
 ├── PROJECT_DOCUMENT.md          # this file
 ├── commands/tasks/              # plan, do-task, do-task-post, common-plan-doc
