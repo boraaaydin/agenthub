@@ -46,7 +46,8 @@ Node server  ──  node-pty  ──  claude / codex CLI process
   as garbage characters.
 - **Session registry** — server-side map of `sessionId → { pty, agent, cwd, buffer }`. The
   buffer holds recent output so a reconnecting or newly-opened browser tab can replay
-  scrollback instead of seeing an empty screen.
+  scrollback instead of seeing an empty screen. It is in-memory only; a server restart ends
+  active sessions.
 
 ### Open decisions
 
@@ -62,17 +63,17 @@ Read from `package.json`; keep in sync when dependencies change.
 - **React** 19.2.8, with `babel-plugin-react-compiler` 1.0.0
 - **TypeScript** ^5, **Tailwind CSS** ^4 (via `@tailwindcss/postcss`)
 - **ESLint** ^9 with `eslint-config-next`
+- **node-pty** 1.1.0, **ws** 8.21.3, and `@types/ws` 8.18.1
+- **xterm.js** (`@xterm/xterm` 6.0.0, `@xterm/addon-fit` 0.11.0)
+- **tsx** 4.23.13 runs the TypeScript custom server locally
 - **pnpm** 10.6.5
-
-Not yet installed, required by the architecture above: `node-pty`, a WebSocket library
-(`ws` or `socket.io`), and `@xterm/xterm` with `@xterm/addon-fit`.
 
 ### Commands
 
 ```bash
-pnpm dev      # next dev
+pnpm dev      # tsx watch server.ts (Next.js + WebSocket custom server)
 pnpm build    # next build
-pnpm start    # next start
+pnpm start    # production custom server (NODE_ENV=production tsx server.ts)
 pnpm lint     # eslint
 ```
 
