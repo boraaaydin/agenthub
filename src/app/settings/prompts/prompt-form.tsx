@@ -10,11 +10,14 @@ type ApiError = { error?: string };
 type PromptFormProps = {
   field: SettingsPromptField;
   value: string;
+  defaultPrompt: string;
 };
 
-export default function PromptForm({ field, value }: PromptFormProps) {
+export default function PromptForm({ field, value, defaultPrompt }: PromptFormProps) {
   const router = useRouter();
   const prompt = SETTINGS_PROMPTS.find((item) => item.field === field)!;
+  const isUsingDefault = value === "" && defaultPrompt !== "";
+  const helpId = `${field}-help`;
   const [content, setContent] = useState(value);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -52,7 +55,12 @@ export default function PromptForm({ field, value }: PromptFormProps) {
     <form onSubmit={save} noValidate>
       <div>
         <h2 className="text-2xl font-semibold tracking-[-0.025em] text-slate-900">{prompt.title}</h2>
-        <p className="mt-1 text-sm leading-6 text-slate-600">{prompt.description}</p>
+        <p id={helpId} className="mt-1 text-sm leading-6 text-slate-600">{prompt.description}</p>
+        {isUsingDefault && (
+          <p className="mt-3 text-sm leading-6 text-slate-600">
+            The built-in default is shown below in muted text. Enter text to save a custom prompt.
+          </p>
+        )}
       </div>
 
       <label className="mt-6 block text-sm font-medium text-slate-800" htmlFor={field}>
@@ -68,7 +76,9 @@ export default function PromptForm({ field, value }: PromptFormProps) {
         }}
         disabled={isSubmitting}
         spellCheck={false}
-        className="mt-2 min-h-[58vh] w-full resize-y rounded-xl border border-slate-300 bg-white px-4 py-3 font-mono text-sm leading-6 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-sky-600 focus:ring-3 focus:ring-sky-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+        placeholder={defaultPrompt}
+        aria-describedby={helpId}
+        className="mt-2 min-h-[58vh] w-full resize-y rounded-xl border border-slate-300 bg-white px-4 py-3 font-mono text-sm leading-6 text-slate-900 outline-none transition placeholder:text-slate-500 placeholder:opacity-100 focus:border-sky-600 focus:ring-3 focus:ring-sky-100 disabled:cursor-not-allowed disabled:bg-slate-100"
       />
 
       <div className="mt-5 flex flex-wrap items-center gap-3">

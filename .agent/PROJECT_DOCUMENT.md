@@ -52,9 +52,11 @@ Node server  ──  node-pty  ──  claude / codex CLI process
 Project metadata is persisted separately in a git-ignored `data/projects.json` file. Per-project
 tasks are persisted in git-ignored `data/tasks.json`, carry globally sequential integer ids
 starting at `1`, are listed with server-side URL pagination, and can be retained or removed when
-their project is deleted. Global Task and Plan agent defaults are
-persisted in git-ignored `data/settings.json`; the code-defined
-agent catalog lives in `src/lib/agents.ts`. The console selects a saved project and its agent per new session (Codex
+their project is deleted. Global Task and Plan agent defaults plus the four global task-flow prompts are
+persisted in git-ignored `data/settings.json`. When a prompt has no saved value, settings displays
+the matching built-in prompt from `src/lib/default-prompts/` in muted text; these defaults are read
+by the server-only `src/lib/default-settings-prompts.ts` module. The code-defined agent catalog lives in
+`src/lib/agents.ts` and the prompt descriptors live in `src/lib/settings-prompts.ts`. The console selects a saved project and its agent per new session (Codex
 by default), while the settings remain available for future task and plan flows. These files
 survive server restarts; agent sessions remain in-memory only and end when the server restarts.
 Project records can be edited or deleted from their detail page.
@@ -106,13 +108,15 @@ src/app/                         # Next.js application
 │   ├── page.tsx                  # Projects list page
 │   └── [id]/                     # Editable project detail and task-list routes
 │       └── tasks/                # Paginated task list, creation, and detail routes
-├── settings/                     # Global Task and Plan agent settings
+├── settings/                     # Global agent defaults and task-flow prompt settings
 ├── tasks/                        # Global task list with a project filter
 ├── agent-console.tsx             # Client console UI
 └── page.tsx                      # Header-only home page
 src/lib/
 ├── agents.ts                     # Client-safe selectable agent catalog
 ├── agent-protocol.ts             # WebSocket session protocol shared by client and server
+├── default-prompts/              # Built-in task-flow prompt Markdown files
+├── default-settings-prompts.ts   # Server-only built-in prompt reader
 └── settings-store.ts             # Persisted global settings store
 server/
 ├── agents.ts                     # Server-only CLI command definitions

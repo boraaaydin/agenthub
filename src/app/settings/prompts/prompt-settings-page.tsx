@@ -1,3 +1,4 @@
+import { readDefaultSettingsPrompt } from "@/lib/default-settings-prompts";
 import type { SettingsPrompt } from "@/lib/settings-prompts";
 import { defaultSettings, readSettings, SettingsStoreError } from "@/lib/settings-store";
 
@@ -20,6 +21,15 @@ export default async function PromptSettingsPage({ prompt }: PromptSettingsPageP
       : "Settings could not be loaded. Reload this page and try again.";
   }
 
+  let defaultPrompt = "";
+  if (settings[prompt.field] === "") {
+    try {
+      defaultPrompt = await readDefaultSettingsPrompt(prompt.field);
+    } catch (caughtError) {
+      console.error("Unable to load default settings prompt", caughtError);
+    }
+  }
+
   return (
     <>
       {error && (
@@ -27,7 +37,11 @@ export default async function PromptSettingsPage({ prompt }: PromptSettingsPageP
           {error}
         </p>
       )}
-      <PromptForm field={prompt.field} value={settings[prompt.field]} />
+      <PromptForm
+        field={prompt.field}
+        value={settings[prompt.field]}
+        defaultPrompt={defaultPrompt}
+      />
     </>
   );
 }
