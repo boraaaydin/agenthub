@@ -6,9 +6,8 @@ import {
   isClientMessage,
   type ClientMessage,
   type ServerMessage,
+  type SessionSummary,
 } from "./src/lib/agent-protocol";
-import { getAgent } from "./src/lib/agents";
-import { readSettings } from "./src/lib/settings-store";
 import { SessionRegistry } from "./server/session-registry";
 
 const port = Number.parseInt(process.env.PORT ?? "3000", 10);
@@ -26,27 +25,16 @@ const socketServer = new WebSocketServer({ noServer: true });
 const clients = new Set<WebSocket>();
 
 const sessions = new SessionRegistry({
-  onOutput: (_session, data) => broadcast({ type: "output", data }),
-  onExit: (_session, code) => {
-    broadcast({ type: "exit", code });
-    broadcast({ type: "status", state: "stopped" });
+  onOutput: (session, data) => broadcast({ type: "output", sessionId: session.id, data }),
+  onExit: (session, code) => {
+    broadcast({ type: "exit", sessionId: session.id, code });
+    broadcastSessions();
   },
 });
 
 socketServer.on("connection", (socket) => {
   clients.add(socket);
-
-  const session = sessions.getActiveSession();
-  if (session) {
-    if (session.buffer) {
-      send(socket, { type: "output", data: session.buffer });
-    }
-    send(socket, { type: "status", state: "running" });
-  } else if (sessions.isStarting()) {
-    send(socket, { type: "status", state: "starting" });
-  } else {
-    send(socket, { type: "status", state: "idle" });
-  }
+  send(socket, { type: "sessions", sessions: sessions.list() });
 
   socket.on("message", (raw) => {
     const message = parseMessage(raw);
@@ -85,52 +73,105 @@ app.prepare().then(() => {
 async function handleClientMessage(socket: WebSocket, message: ClientMessage) {
   switch (message.type) {
     case "start": {
-      const activeSession = sessions.getActiveSession();
-      if (activeSession || sessions.isStarting()) {
-        const activeAgent = activeSession ? getAgent(activeSession.agent) : null;
-        send(socket, {
-          type: "error",
-          message: activeAgent
-            ? `A ${activeAgent.label} session is already running. Stop it before starting another.`
-            : "An agent session is already starting. Try again in a moment.",
-        });
-        return;
-      }
-
-      broadcast({ type: "status", state: "starting" });
       try {
-        const settings = await readSettings();
-        const agent = getAgent(settings.taskAgent);
-        await sessions.start(message.cwd, message.cols, message.rows, agent);
-        broadcast({ type: "status", state: "running" });
+        const session = await sessions.create(message.agent, message.cwd, message.cols, message.rows);
+        send(socket, { type: "started", session: toSummary(session) });
+        broadcastSessions();
       } catch (error) {
-        broadcast({ type: "status", state: "idle" });
         send(socket, { type: "error", message: errorMessage(error) });
       }
       return;
     }
-    case "input": {
-      const session = sessions.getActiveSession();
+    case "attach": {
+      const session = sessions.get(message.sessionId);
       if (!session) {
-        send(socket, { type: "error", message: "Start a session before sending input." });
+        sendUnknownSession(socket, message.sessionId);
         return;
       }
-      session.pty.write(message.data);
+
+      if (session.state !== "exited") {
+        session.pty.resize(message.cols, message.rows);
+      }
+      send(socket, { type: "scrollback", sessionId: session.id, data: session.buffer });
+      return;
+    }
+    case "input": {
+      const session = getLiveSession(socket, message.sessionId);
+      if (session) {
+        session.pty.write(message.data);
+      }
       return;
     }
     case "resize": {
-      const session = sessions.getActiveSession();
+      const session = getLiveSession(socket, message.sessionId);
       if (session) {
         session.pty.resize(message.cols, message.rows);
       }
       return;
     }
     case "stop": {
-      if (sessions.stop()) {
-        broadcast({ type: "status", state: "stopped" });
+      const session = getLiveSession(socket, message.sessionId);
+      if (!session) {
+        return;
       }
+
+      if (sessions.stop(session.id)) {
+        broadcastSessions();
+      }
+      return;
+    }
+    case "dismiss": {
+      const session = sessions.get(message.sessionId);
+      if (!session) {
+        sendUnknownSession(socket, message.sessionId);
+        return;
+      }
+      if (session.state !== "exited") {
+        send(socket, {
+          type: "error",
+          sessionId: session.id,
+          message: "Stop a session before dismissing it.",
+        });
+        return;
+      }
+
+      sessions.dismiss(session.id);
+      broadcastSessions();
     }
   }
+}
+
+function getLiveSession(socket: WebSocket, sessionId: string) {
+  const session = sessions.get(sessionId);
+  if (!session) {
+    sendUnknownSession(socket, sessionId);
+    return null;
+  }
+  if (session.state === "exited") {
+    send(socket, {
+      type: "error",
+      sessionId,
+      message: "This session has exited. Its scrollback is still available until you dismiss it.",
+    });
+    return null;
+  }
+  return session;
+}
+
+function sendUnknownSession(socket: WebSocket, sessionId: string) {
+  send(socket, {
+    type: "error",
+    sessionId,
+    message: "This session is no longer available.",
+  });
+}
+
+function toSummary({ id, agent, cwd, state, createdAt }: { id: string; agent: SessionSummary["agent"]; cwd: string; state: SessionSummary["state"]; createdAt: string }): SessionSummary {
+  return { id, agent, cwd, state, createdAt };
+}
+
+function broadcastSessions() {
+  broadcast({ type: "sessions", sessions: sessions.list() });
 }
 
 function parseMessage(raw: RawData): ClientMessage | null {
@@ -169,7 +210,7 @@ function send(socket: WebSocket, message: ServerMessage) {
 }
 
 function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "Could not start the agent.";
+  return error instanceof Error ? error.message : "Could not start the selected agent.";
 }
 
 let shuttingDown = false;

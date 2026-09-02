@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
-import { AGENT_CATALOG, isAgentId, type AgentId } from "@/lib/agents";
+import { AGENTS, isAgentId, type AgentId } from "@/lib/agents";
 
 type ApiError = { error?: string };
 
@@ -49,7 +49,7 @@ export default function SettingsForm({ settings }: SettingsFormProps) {
         return;
       }
 
-      setSuccess("Settings saved. New sessions will use the selected Task agent.");
+      setSuccess("Settings saved.");
       router.refresh();
     } catch {
       setError("Unable to reach the server. Check your connection and try again.");
@@ -71,12 +71,12 @@ export default function SettingsForm({ settings }: SettingsFormProps) {
           disabled={isSubmitting}
           className="mt-2 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-sky-600 focus:ring-3 focus:ring-sky-100 disabled:cursor-not-allowed disabled:bg-slate-100"
         >
-          {AGENT_CATALOG.map((agent) => (
+          {AGENTS.map((agent) => (
             <option key={agent.id} value={agent.id}>{agent.label}</option>
           ))}
         </select>
         <p className="mt-2 text-sm leading-6 text-slate-600">
-          Used when you start a new agent session from the console.
+          Stored for the task flow.
         </p>
       </div>
 
@@ -91,7 +91,7 @@ export default function SettingsForm({ settings }: SettingsFormProps) {
           disabled={isSubmitting}
           className="mt-2 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-sky-600 focus:ring-3 focus:ring-sky-100 disabled:cursor-not-allowed disabled:bg-slate-100"
         >
-          {AGENT_CATALOG.map((agent) => (
+          {AGENTS.map((agent) => (
             <option key={agent.id} value={agent.id}>{agent.label}</option>
           ))}
         </select>

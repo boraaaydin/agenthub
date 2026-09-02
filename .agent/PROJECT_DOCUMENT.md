@@ -51,15 +51,15 @@ Node server  ──  node-pty  ──  claude / codex CLI process
 
 Project metadata is persisted separately in a git-ignored `data/projects.json` file. Global
 Task and Plan agent defaults are persisted in git-ignored `data/settings.json`; the code-defined
-agent catalog lives in `src/lib/agents.ts`. The console reads the current Task agent when starting
-a session, so it spawns the configured agent rather than a hard-coded binary. These files survive
-server restarts; agent sessions remain in-memory only and end when the server restarts. Project
-records can be edited or deleted from their detail page.
+agent catalog lives in `src/lib/agents.ts`. The console selects its agent per new session (Codex
+by default), while the settings remain available for future task and plan flows. These files
+survive server restarts; agent sessions remain in-memory only and end when the server restarts.
+Project records can be edited or deleted from their detail page.
 
 ### Open decisions
 
 - Session persistence across a server restart (in-memory only vs. on disk).
-- Whether the working directory per session is user-selectable.
+- Working directory selection is supported per session.
 - Auth: none (localhost-only) vs. a shared token.
 
 ## Tech Stack
@@ -97,15 +97,19 @@ The same rule is carried in the tool-managed `<!-- BEGIN:nextjs-agent-rules -->`
 src/app/                         # Next.js application
 ├── api/projects/                 # Route Handlers for persisted project metadata
 ├── api/settings/                 # Route Handler for global agent defaults
-├── console/                      # Configured-agent console route
+├── console/                      # Multi-session console route and colocated client components
 ├── projects/                     # Project creation and detail routes
 │   └── [id]/                     # Editable project detail route
 ├── settings/                     # Global Task and Plan agent settings
 ├── agent-console.tsx             # Client console UI
 └── page.tsx                      # Projects home page
 src/lib/
-├── agents.ts                     # Code-defined selectable agent catalog
+├── agents.ts                     # Client-safe selectable agent catalog
+├── agent-protocol.ts             # WebSocket session protocol shared by client and server
 └── settings-store.ts             # Persisted global settings store
+server/
+├── agents.ts                     # Server-only CLI command definitions
+└── session-registry.ts           # In-memory concurrent PTY session registry
 data/                             # Runtime JSON database (git-ignored: projects.json, settings.json)
 .agent/
 ├── PROJECT_DOCUMENT.md          # this file
@@ -132,6 +136,12 @@ Task files are always written in English.
 Note: `archive-task.sh` expects an `apps/{APP_NAME}/...` path and refuses anything else, so
 tasks in `.agent/tasks/` are archived by hand into
 `.agent/tasks-archived/{YYYY}/{MM}/{DD}/`.
+
+## Delivered session capabilities
+
+- Agent selection (Codex or Claude Code) is available per new console session.
+- Multiple concurrent sessions can run, be selected from the console sidebar, and retain their
+  individual in-memory scrollback until dismissed after exit.
 
 ## Agent Harness Configuration
 
