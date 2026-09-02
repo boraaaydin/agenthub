@@ -53,7 +53,7 @@ Project metadata is persisted separately in a git-ignored `data/projects.json` f
 tasks are persisted in git-ignored `data/tasks.json`, listed with server-side URL pagination, and
 can be retained or removed when their project is deleted. Global Task and Plan agent defaults are
 persisted in git-ignored `data/settings.json`; the code-defined
-agent catalog lives in `src/lib/agents.ts`. The console selects its agent per new session (Codex
+agent catalog lives in `src/lib/agents.ts`. The console selects a saved project and its agent per new session (Codex
 by default), while the settings remain available for future task and plan flows. These files
 survive server restarts; agent sessions remain in-memory only and end when the server restarts.
 Project records can be edited or deleted from their detail page.
@@ -61,7 +61,7 @@ Project records can be edited or deleted from their detail page.
 ### Open decisions
 
 - Session persistence across a server restart (in-memory only vs. on disk).
-- Working directory selection is supported per session.
+- Console sessions run in the directory of a selected saved project.
 - Auth: none (localhost-only) vs. a shared token.
 
 ## Tech Stack

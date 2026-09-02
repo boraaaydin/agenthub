@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import type { Terminal } from "@xterm/xterm";
 
@@ -11,12 +12,23 @@ import { SessionSidebar } from "./session-sidebar";
 import { SessionTerminal } from "./session-terminal";
 import { useAgentSocket } from "./use-agent-socket";
 
+type ConsoleProject = {
+  id: string;
+  name: string;
+  path: string;
+};
+
+type ApiError = { error?: string };
+
 function sendPlaceholder() {
   return false;
 }
 
 export function AgentConsole() {
-  const [cwd, setCwd] = useState("");
+  const searchParams = useSearchParams();
+  const [projects, setProjects] = useState<ConsoleProject[]>([]);
+  const [isLoadingProjects, setIsLoadingProjects] = useState(true);
+  const [selectedProjectId, setSelectedProjectId] = useState("");
   const [agent, setAgent] = useState<AgentId>(DEFAULT_AGENT_ID);
   const [prompt, setPrompt] = useState("");
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
@@ -31,6 +43,8 @@ export function AgentConsole() {
   const queuedPromptRef = useRef<{ sessionId: string | null; prompt: string } | null>(null);
   const pendingSessionIdRef = useRef<string | null>(null);
   const selectionInitializedRef = useRef(false);
+  const projectSelectionInitializedRef = useRef(false);
+  const initialProjectIdRef = useRef(searchParams.get("projectId"));
   const sendRef = useRef<(message: ClientMessage) => boolean>(sendPlaceholder);
 
   const onSessions = useCallback((nextSessions: SessionSummary[]) => {
@@ -112,6 +126,39 @@ export function AgentConsole() {
   });
 
   useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadProjects() {
+      try {
+        const response = await fetch("/api/projects", { signal: controller.signal });
+        const body = (await response.json()) as ConsoleProject[] | ApiError;
+        if (!response.ok) {
+          throw new Error((body as ApiError).error ?? "Unable to load saved projects. Try again.");
+        }
+
+        const nextProjects = body as ConsoleProject[];
+        setProjects(nextProjects);
+        if (!projectSelectionInitializedRef.current) {
+          projectSelectionInitializedRef.current = true;
+          const initialProject = nextProjects.find((project) => project.id === initialProjectIdRef.current);
+          setSelectedProjectId(initialProject?.id ?? nextProjects[0]?.id ?? "");
+        }
+      } catch (loadError) {
+        if (!controller.signal.aborted) {
+          setError(loadError instanceof Error ? loadError.message : "Unable to load saved projects. Try again.");
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsLoadingProjects(false);
+        }
+      }
+    }
+
+    void loadProjects();
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
     sendRef.current = send;
   }, [send]);
 
@@ -148,8 +195,10 @@ export function AgentConsole() {
 
   const activeSession = sessions.find((session) => session.id === selectedSessionId) ?? null;
   const activeAgent = activeSession ? getAgent(activeSession.agent) : null;
+  const activeProject = activeSession ? projects.find((project) => project.path === activeSession.cwd) : null;
+  const selectedProject = projects.find((project) => project.id === selectedProjectId) ?? null;
   const selectedAgent = getAgent(agent);
-  const canStart = connected && !isCreating && cwd.trim().length > 0 && prompt.trim().length > 0;
+  const canStart = connected && !isCreating && !isLoadingProjects && Boolean(selectedProject) && prompt.trim().length > 0;
   const canSend = connected && activeSession?.state === "running" && prompt.trim().length > 0;
 
   function selectSession(sessionId: string) {
@@ -191,15 +240,15 @@ export function AgentConsole() {
 
     setError("");
     if (newSession || !activeSession) {
-      if (!cwd.trim()) {
-        setError("Enter a working directory before starting a session.");
+      if (!selectedProject) {
+        setError(isLoadingProjects ? "Saved projects are still loading." : "Select a saved project before starting a session.");
         return;
       }
       queuedPromptRef.current = { sessionId: null, prompt: value };
       if (!send({
         type: "start",
         agent,
-        cwd,
+        cwd: selectedProject.path,
         cols: terminalRef.current?.cols ?? 80,
         rows: terminalRef.current?.rows ?? 24,
       })) {
@@ -226,7 +275,7 @@ export function AgentConsole() {
             <BrandLink />
             <h1 className="mt-3 text-3xl font-semibold tracking-[-0.03em]">Console</h1>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600">
-              Run and switch between persistent agent sessions in any local directory.
+              Run and switch between persistent agent sessions in your saved project directories.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -254,16 +303,27 @@ export function AgentConsole() {
               <section aria-label="New session controls" className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_12rem]">
                   <div>
-                    <label className="block text-sm font-medium text-slate-800" htmlFor="working-directory">
-                      Working directory
-                    </label>
-                    <input
-                      id="working-directory"
-                      value={cwd}
-                      onChange={(event) => setCwd(event.target.value)}
-                      placeholder="/Users/you/Code/project"
-                      className="mt-2 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 font-mono text-sm outline-none transition focus:border-sky-600 focus:ring-3 focus:ring-sky-100"
-                    />
+                    {isLoadingProjects ? (
+                      <p className="pt-1 text-sm leading-6 text-slate-600">Loading saved projects…</p>
+                    ) : projects.length === 0 ? (
+                      <p className="pt-1 text-sm leading-6 text-slate-600">
+                        Save a project before starting a session. <Link href="/projects/new" className="font-medium text-sky-700 transition hover:text-sky-900 focus:outline-none focus:ring-3 focus:ring-sky-100">Create a project</Link>.
+                      </p>
+                    ) : (
+                      <>
+                        <label className="block text-sm font-medium text-slate-800" htmlFor="project">
+                          Project
+                        </label>
+                        <select
+                          id="project"
+                          value={selectedProjectId}
+                          onChange={(event) => setSelectedProjectId(event.target.value)}
+                          className="mt-2 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-sky-600 focus:ring-3 focus:ring-sky-100"
+                        >
+                          {projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
+                        </select>
+                      </>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-800" htmlFor="agent">
@@ -279,12 +339,12 @@ export function AgentConsole() {
                     </select>
                   </div>
                 </div>
-                <p className="text-sm text-slate-600">The directory is checked before {selectedAgent.label} starts.</p>
+                {selectedProject && <p className="text-sm text-slate-600">{selectedAgent.label} will start in {selectedProject.name}.</p>}
               </section>
             ) : (
               <section className="flex flex-wrap items-center justify-between gap-3" aria-label={`${activeAgent?.label} session controls`}>
                 <div>
-                  <h2 className="text-lg font-semibold text-slate-900">{activeAgent?.label}</h2>
+                  <h2 className="text-lg font-semibold text-slate-900">{activeProject?.name ?? activeAgent?.label}</h2>
                   <p className="mt-1 font-mono text-sm text-slate-600">{activeSession.cwd}</p>
                 </div>
                 {activeSession.state === "running" && (
