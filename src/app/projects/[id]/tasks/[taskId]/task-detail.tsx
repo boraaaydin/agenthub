@@ -25,7 +25,7 @@ type TaskDetailProps = {
 
 export default function TaskDetail({ projectName, task }: TaskDetailProps) {
   const router = useRouter();
-  const taskListPath = `/projects/${task.projectId}/tasks`;
+  const taskListPath = `/tasks?project=${encodeURIComponent(task.projectId)}`;
   const taskApiPath = `/api/projects/${task.projectId}/tasks/${task.id}`;
   const [title, setTitle] = useState(task.title);
   const [detail, setDetail] = useState(task.detail);

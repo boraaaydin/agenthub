@@ -88,6 +88,10 @@ function paginationHref(page: number, projectId: string): string {
   return `/tasks?${searchParams.toString()}`;
 }
 
+function newTaskHref(projectId: string): string {
+  return projectId ? `/tasks/new?project=${encodeURIComponent(projectId)}` : "/tasks/new";
+}
+
 export default async function TasksPage(props: PageProps<"/tasks">) {
   const searchParams = await props.searchParams;
   const requestedPage = Array.isArray(searchParams.page) ? searchParams.page[0] : searchParams.page;
@@ -123,10 +127,18 @@ export default async function TasksPage(props: PageProps<"/tasks">) {
   return (
     <main className="min-h-screen bg-[#f4f6fa] px-4 py-6 text-slate-900 sm:px-6 sm:py-10">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
-        <header className="border-b border-slate-200 pb-5">
-          <BrandLink />
-          <h1 className="mt-3 text-3xl font-semibold tracking-[-0.03em]">Tasks</h1>
-          <p className="mt-1 text-sm leading-6 text-slate-600">Every task across your saved projects.</p>
+        <header className="flex flex-col gap-4 border-b border-slate-200 pb-5 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <BrandLink />
+            <h1 className="mt-3 text-3xl font-semibold tracking-[-0.03em]">Tasks</h1>
+            <p className="mt-1 text-sm leading-6 text-slate-600">Every task across your saved projects.</p>
+          </div>
+          <Link
+            href={newTaskHref(selectedProjectId)}
+            className="inline-flex h-11 items-center justify-center rounded-xl bg-sky-700 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-800 focus:outline-none focus:ring-3 focus:ring-sky-200"
+          >
+            New task
+          </Link>
         </header>
 
         {error ? (
@@ -144,20 +156,29 @@ export default async function TasksPage(props: PageProps<"/tasks">) {
                 {selectedProjectId ? (
                   <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-600">
                     <Link
+                      href={newTaskHref(selectedProjectId)}
+                      className="font-medium text-sky-700 transition hover:text-sky-900 focus:outline-none focus:ring-3 focus:ring-sky-100"
+                    >
+                      Create a task for this project
+                    </Link>
+                    {" or "}
+                    <Link
                       href="/tasks"
                       className="font-medium text-sky-700 transition hover:text-sky-900 focus:outline-none focus:ring-3 focus:ring-sky-100"
                     >
-                      View all projects’ tasks
+                      view all projects’ tasks
                     </Link>
+                    .
                   </p>
                 ) : (
                   <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-600">
-                    Add a task from a project to see it here. <Link
-                      href="/projects"
+                    <Link
+                      href="/tasks/new"
                       className="font-medium text-sky-700 transition hover:text-sky-900 focus:outline-none focus:ring-3 focus:ring-sky-100"
                     >
-                      View projects
+                      Create your first task
                     </Link>
+                    {" to keep work visible across your projects."}
                   </p>
                 )}
               </section>

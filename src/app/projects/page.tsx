@@ -36,7 +36,7 @@ function ProjectList({ projects }: { projects: Project[] }) {
               <p className="mt-1 break-all font-mono text-sm leading-6 text-slate-600">{project.path}</p>
             </Link>
             <Link
-              href={`/projects/${project.id}/tasks`}
+              href={`/tasks?project=${project.id}`}
               aria-label={`Tasks for ${project.name}`}
               className="mr-3 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-600 transition hover:bg-slate-100 hover:text-sky-800 focus:outline-none focus:ring-3 focus:ring-sky-100 sm:mr-4"
             >

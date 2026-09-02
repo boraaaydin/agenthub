@@ -107,10 +107,10 @@ src/app/                         # Next.js application
 │   └── use-plan-run.ts           # Starts a plan session from task URL parameters
 ├── projects/                     # Projects list, creation, and detail routes
 │   ├── page.tsx                  # Projects list page
-│   └── [id]/                     # Editable project detail and task-list routes
-│       └── tasks/                # Paginated task list, creation, and detail routes
+│   └── [id]/                     # Editable project detail and task-detail routes
+│       └── tasks/                # Detail routes; list and creation redirect to /tasks
 ├── settings/                     # Global agent defaults and task-flow prompt settings
-├── tasks/                        # Global task list with a project filter
+├── tasks/                        # Global task list, project filter, and unified task creation
 ├── agent-console.tsx             # Client console UI
 └── page.tsx                      # Header-only home page
 src/lib/
@@ -160,7 +160,7 @@ tasks in `.agent/tasks/` are archived by hand into
   and effective planning/after-planning prompts, with the composed multi-line prompt pasted and
   submitted as one terminal input. When its agent exits, the plan session closes and is removed
   automatically.
-- A cross-project task list provides server-rendered pagination and an optional project filter.
+- A single `/tasks` screen provides server-rendered, cross-project task pagination and an optional project filter; `/tasks/new` creates tasks for any saved project. Per-project list and creation URLs redirect to these unified screens.
 
 ## Agent Harness Configuration
 
