@@ -3,7 +3,7 @@ import Link from "next/link";
 import { BrandBar } from "../brand-bar";
 import { ProjectFilter } from "./project-filter";
 import { listProjects, ProjectStoreError } from "@/lib/projects-store";
-import { plansHref } from "@/lib/plan-filters";
+import { newPlanHref, planDetailHref, plansHref } from "@/lib/plan-filters";
 import { listAllPlans, PlanStoreError, PLANS_PAGE_SIZE, type Plan } from "@/lib/plans-store";
 
 export const dynamic = "force-dynamic";
@@ -26,7 +26,11 @@ function PlanRows({ plans, projectNames }: { plans: Plan[]; projectNames: Map<st
                     {projectName ?? "Unknown project"}
                   </span>
                   <span className="shrink-0 text-sm font-medium tabular-nums text-slate-500">#{plan.id}</span>
-                  <h2 className="min-w-0 break-words font-medium text-slate-900">{plan.title}</h2>
+                  <h2 className="min-w-0 break-words font-medium text-slate-900">
+                    <Link href={planDetailHref(plan.id)} className="transition hover:text-sky-800 focus:outline-none focus:ring-3 focus:ring-sky-100">
+                      {plan.title}
+                    </Link>
+                  </h2>
                 </div>
                 <time className="shrink-0 text-sm text-slate-500" dateTime={plan.createdAt}>{planDate(plan.createdAt)}</time>
               </div>
@@ -87,8 +91,18 @@ export default async function PlansPage(props: PageProps<"/plans">) {
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
         <header className="border-b border-slate-200 pb-5">
           <BrandBar />
-          <h1 className="mt-3 text-3xl font-semibold tracking-[-0.03em]">Plans</h1>
-          <p className="mt-1 text-sm leading-6 text-slate-600">Plans registered after task planning sessions.</p>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h1 className="text-3xl font-semibold tracking-[-0.03em]">Plans</h1>
+              <p className="mt-1 text-sm leading-6 text-slate-600">Plans registered after task planning sessions.</p>
+            </div>
+            <Link
+              href={newPlanHref(selectedProjectId)}
+              className="inline-flex h-11 items-center rounded-xl bg-sky-700 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-800 focus:outline-none focus:ring-3 focus:ring-sky-200"
+            >
+              New plan
+            </Link>
+          </div>
         </header>
 
         {error ? (
@@ -100,7 +114,7 @@ export default async function PlansPage(props: PageProps<"/plans">) {
               <section className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
                 <h2 className="text-lg font-semibold text-slate-900">{hasAnyPlans ? "No plans for this project" : "No plans yet"}</h2>
                 <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-600">
-                  {hasAnyPlans ? "Switch the project filter to see plans from other projects." : "Plans appear here after a planning session finishes."}
+                  {hasAnyPlans ? <>Switch the project filter to see plans from other projects, or <Link href={newPlanHref(selectedProjectId)} className="font-medium text-sky-700 underline decoration-sky-300 underline-offset-2 hover:text-sky-900">register a plan by hand</Link>.</> : <>Plans appear here after a planning session finishes, or <Link href={newPlanHref(selectedProjectId)} className="font-medium text-sky-700 underline decoration-sky-300 underline-offset-2 hover:text-sky-900">register one by hand</Link>.</>}
                 </p>
               </section>
             ) : (
