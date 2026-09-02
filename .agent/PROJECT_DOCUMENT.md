@@ -65,7 +65,7 @@ by the server-only `src/lib/default-settings-prompts.ts` module. The code-define
 `src/lib/agents.ts` and the prompt descriptors live in `src/lib/settings-prompts.ts`. The console selects a saved project and its agent per new session (Codex
 by default), while the settings remain available for future task and plan flows. These files
 survive server restarts; agent sessions remain in-memory only and end when the server restarts.
-Project records can be edited or deleted from their detail page. Each project may carry an optional palette color token; projects without one derive a stable color from their id, and the project name is shown as a white-on-color chip wherever it appears in project, task, and plan screens. Creating a plan from a task composes the effective Task planning and After planning prompts (saved text when present, otherwise the built-in Markdown defaults) with that task's title and detail, then starts the configured Plan agent in the task's project directory through the console.
+Project records can be edited or deleted from their detail page. Each project may carry an optional palette color token; projects without one derive a stable color from their id, and the project name is shown as a white-on-color chip wherever it appears in project, task, and plan screens. Creating a plan from a task composes the effective Task planning and After planning prompts (saved text when present, otherwise the built-in Markdown defaults) with that task's title and detail plus a code-defined language rule, then starts the configured Plan agent in the task's project directory through the console.
 
 ### Open decisions
 
@@ -161,7 +161,7 @@ Work is planned into task files before it is implemented — spec first, then co
    related GitHub issue, audits touched files against the 600-line rule, and suggests commit
    messages.
 
-Task files are always written in English.
+Task-file prose, plan titles, and plan summaries are written in the language inferred from the task title and detail, unless the task explicitly requests another language. Markdown section headings, the `Root application (`agenthub`)` line, lowercase kebab-case English file names, file paths, commands, and code identifiers remain in English.
 
 Note: `archive-task.sh` expects an `apps/{APP_NAME}/...` path and refuses anything else, so
 tasks in `.agent/tasks/` are archived by hand into
