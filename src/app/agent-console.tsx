@@ -2,6 +2,7 @@
 
 import "@xterm/xterm/css/xterm.css";
 
+import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import type { Terminal } from "@xterm/xterm";
 import type {
@@ -223,9 +224,17 @@ export function AgentConsole() {
               Keep one Codex conversation open in the directory you choose.
             </p>
           </div>
-          <div className="flex items-center gap-2 text-sm text-slate-600" aria-live="polite">
-            <span className={`h-2 w-2 rounded-full ${connected ? "bg-emerald-500" : "bg-slate-400"}`} />
-            {connected ? "Terminal connected" : "Connecting to terminal"}
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              href="/"
+              className="text-sm font-medium text-sky-700 transition hover:text-sky-900 focus:outline-none focus:ring-3 focus:ring-sky-100"
+            >
+              Projects
+            </Link>
+            <div className="flex items-center gap-2 text-sm text-slate-600" aria-live="polite">
+              <span className={`h-2 w-2 rounded-full ${connected ? "bg-emerald-500" : "bg-slate-400"}`} />
+              {connected ? "Terminal connected" : "Connecting to terminal"}
+            </div>
           </div>
         </header>
 
