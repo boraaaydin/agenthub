@@ -22,7 +22,7 @@ export default async function PlanDetailPage(props: PageProps<"/plans/[planId]">
   }
 
   let plan: Awaited<ReturnType<typeof getPlan>> = null;
-  let projects: { id: string; name: string }[] = [];
+  let projects: { id: string; name: string; color?: string }[] = [];
   let tasksByProject: Record<string, { id: number; title: string }[]> = {};
   let projectPath: string | null = null;
   let taskExists = false;
@@ -41,7 +41,7 @@ export default async function PlanDetailPage(props: PageProps<"/plans/[planId]">
       listAllTasks({ page: 1, pageSize: 500 }),
     ]);
     taskExists = Boolean(project && await getTask(plan.projectId, plan.taskId));
-    projects = savedProjects.map(({ id, name }) => ({ id, name }));
+    projects = savedProjects.map(({ id, name, color }) => ({ id, name, color }));
     tasksByProject = taskPage.tasks.reduce<Record<string, { id: number; title: string }[]>>((groups, task) => {
       (groups[task.projectId] ??= []).push({ id: task.id, title: task.title });
       return groups;

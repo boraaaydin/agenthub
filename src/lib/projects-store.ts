@@ -4,11 +4,14 @@ import { randomUUID } from "node:crypto";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 
+import { isProjectColorToken, type ProjectColorToken } from "./project-colors";
+
 export type Project = {
   id: string;
   name: string;
   path: string;
   createdAt: string;
+  color?: ProjectColorToken;
 };
 
 type ProjectsDocument = {
@@ -33,8 +36,33 @@ function isProject(value: unknown): value is Project {
     typeof project.id === "string" &&
     typeof project.name === "string" &&
     typeof project.path === "string" &&
+    typeof project.createdAt === "string" &&
+    (!("color" in project) || isProjectColorToken(project.color))
+  );
+}
+
+function isProjectRecord(value: unknown): value is Record<string, unknown> {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const project = value as Record<string, unknown>;
+  return (
+    typeof project.id === "string" &&
+    typeof project.name === "string" &&
+    typeof project.path === "string" &&
     typeof project.createdAt === "string"
   );
+}
+
+function normalizeProject(project: Record<string, unknown>): Project {
+  const normalized = {
+    id: project.id as string,
+    name: project.name as string,
+    path: project.path as string,
+    createdAt: project.createdAt as string,
+  };
+  return isProject(project) ? { ...normalized, ...(project.color ? { color: project.color } : {}) } : normalized;
 }
 
 function parseDocument(value: unknown): ProjectsDocument {
@@ -43,11 +71,11 @@ function parseDocument(value: unknown): ProjectsDocument {
   }
 
   const { projects } = value as { projects: unknown };
-  if (!Array.isArray(projects) || !projects.every(isProject)) {
+  if (!Array.isArray(projects) || !projects.every(isProjectRecord)) {
     throw new ProjectStoreError(`Project data in ${PROJECTS_FILE_PATH} has an invalid format.`);
   }
 
-  return { projects };
+  return { projects: projects.map(normalizeProject) };
 }
 
 async function readDocument(): Promise<ProjectsDocument> {
@@ -89,12 +117,15 @@ function serializeWrite<T>(operation: () => Promise<T>): Promise<T> {
   return result;
 }
 
-function projectDetails(input: unknown): { name: string; path: string } {
+type ProjectDetails = { name: string; path: string; color?: ProjectColorToken | null };
+
+function projectDetails(input: unknown): ProjectDetails {
   if (!input || typeof input !== "object") {
     throw new ProjectValidationError("Name and working directory are required.");
   }
 
-  const { name, path: projectPath } = input as Record<string, unknown>;
+  const details = input as Record<string, unknown>;
+  const { name, path: projectPath } = details;
   if (typeof name !== "string" || !name.trim()) {
     throw new ProjectValidationError("Enter a project name.");
   }
@@ -102,7 +133,17 @@ function projectDetails(input: unknown): { name: string; path: string } {
     throw new ProjectValidationError("Enter a working directory path.");
   }
 
-  return { name: name.trim(), path: path.resolve(projectPath.trim()) };
+  const normalized = { name: name.trim(), path: path.resolve(projectPath.trim()) };
+  if (!("color" in details) || details.color === undefined) {
+    return normalized;
+  }
+  if (details.color === null || details.color === "") {
+    return { ...normalized, color: null };
+  }
+  if (isProjectColorToken(details.color)) {
+    return { ...normalized, color: details.color };
+  }
+  throw new ProjectValidationError("Choose a color from the palette.");
 }
 
 async function validateDirectory(projectPath: string): Promise<void> {
@@ -143,6 +184,7 @@ export async function createProject(input: unknown): Promise<Project> {
       name: details.name,
       path: details.path,
       createdAt: new Date().toISOString(),
+      ...(details.color ? { color: details.color } : {}),
     };
 
     document.projects.push(project);
@@ -164,6 +206,11 @@ export async function updateProject(inputId: string, input: unknown): Promise<Pr
 
     project.name = details.name;
     project.path = details.path;
+    if (details.color === null) {
+      delete project.color;
+    } else if (details.color) {
+      project.color = details.color;
+    }
     await writeDocument(document);
     return project;
   });

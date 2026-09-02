@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { BrandBar } from "../brand-bar";
+import { ProjectChip, UnknownProjectChip } from "../project-chip";
 import { ProjectFilter } from "./project-filter";
 import { listProjects, ProjectStoreError } from "@/lib/projects-store";
 import { newPlanHref, planDetailHref, plansHref } from "@/lib/plan-filters";
@@ -12,19 +13,19 @@ function planDate(value: string): string {
   return new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(value));
 }
 
-function PlanRows({ plans, projectNames }: { plans: Plan[]; projectNames: Map<string, string> }) {
+function PlanRows({ plans, projectNames }: { plans: Plan[]; projectNames: Map<string, { name: string; color?: string }> }) {
   return (
     <section aria-label="All plans" className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       <ul className="divide-y divide-slate-200">
         {plans.map((plan) => {
-          const projectName = projectNames.get(plan.projectId);
+          const project = projectNames.get(plan.projectId);
           return (
             <li key={plan.id} className="px-4 py-4 sm:px-5">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-baseline sm:justify-between sm:gap-5">
                 <div className="flex min-w-0 flex-wrap items-baseline gap-2">
-                  <span className="shrink-0 rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-                    {projectName ?? "Unknown project"}
-                  </span>
+                  {project ? (
+                    <ProjectChip projectId={plan.projectId} name={project.name} color={project.color} />
+                  ) : <UnknownProjectChip />}
                   <span className="shrink-0 text-sm font-medium tabular-nums text-slate-500">#{plan.id}</span>
                   <h2 className="min-w-0 break-words font-medium text-slate-900">
                     <Link href={planDetailHref(plan.id)} className="transition hover:text-sky-800 focus:outline-none focus:ring-3 focus:ring-sky-100">
@@ -36,7 +37,7 @@ function PlanRows({ plans, projectNames }: { plans: Plan[]; projectNames: Map<st
               </div>
               <p className="mt-1.5 max-w-3xl text-sm leading-6 text-slate-600">{plan.summary || "No summary provided."}</p>
               <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-                {projectName ? (
+                {project ? (
                   <Link
                     href={`/projects/${plan.projectId}/tasks/${plan.taskId}`}
                     className="font-medium text-sky-700 transition hover:text-sky-900 focus:outline-none focus:ring-3 focus:ring-sky-100"
@@ -63,8 +64,8 @@ export default async function PlansPage(props: PageProps<"/plans">) {
   const parsedPage = requestedPage ? Number.parseInt(requestedPage, 10) : Number.NaN;
   const page = Number.isInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1;
 
-  let projects: { id: string; name: string }[] = [];
-  let projectNames = new Map<string, string>();
+  let projects: { id: string; name: string; color?: string }[] = [];
+  let projectNames = new Map<string, { name: string; color?: string }>();
   let planPage: Awaited<ReturnType<typeof listAllPlans>> | undefined;
   let hasAnyPlans = false;
   let selectedProjectId = "";
@@ -72,8 +73,8 @@ export default async function PlansPage(props: PageProps<"/plans">) {
 
   try {
     const savedProjects = await listProjects();
-    projects = savedProjects.map(({ id, name }) => ({ id, name }));
-    projectNames = new Map(projects.map((project) => [project.id, project.name]));
+    projects = savedProjects.map(({ id, name, color }) => ({ id, name, color }));
+    projectNames = new Map(projects.map((project) => [project.id, { name: project.name, color: project.color }]));
     selectedProjectId = projects.some((project) => project.id === requestedProjectId) ? requestedProjectId ?? "" : "";
     planPage = await listAllPlans({ page, pageSize: PLANS_PAGE_SIZE, projectId: selectedProjectId || undefined });
     hasAnyPlans = (await listAllPlans({ page: 1, pageSize: 1 })).total > 0;

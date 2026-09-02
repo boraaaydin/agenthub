@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { BrandBar } from "../brand-bar";
+import { ProjectChip } from "../project-chip";
 import { listProjects, ProjectStoreError, type Project } from "@/lib/projects-store";
 
 export const dynamic = "force-dynamic";
@@ -32,7 +33,7 @@ function ProjectList({ projects }: { projects: Project[] }) {
               href={`/projects/${project.id}`}
               className="min-w-0 flex-1 px-4 py-4 focus:outline-none focus:ring-3 focus:ring-inset focus:ring-sky-100 sm:px-5"
             >
-              <h2 className="font-medium text-slate-900">{project.name}</h2>
+              <h2 className="font-medium text-slate-900"><ProjectChip projectId={project.id} name={project.name} color={project.color} /></h2>
               <p className="mt-1 break-all font-mono text-sm leading-6 text-slate-600">{project.path}</p>
             </Link>
             <Link

@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { BrandBar } from "../brand-bar";
+import { ProjectChip, UnknownProjectChip } from "../project-chip";
 import { ProjectFilter } from "./project-filter";
 import { StatusFilter } from "./status-filter";
 import { TaskStatusButton } from "./task-status-button";
@@ -43,19 +44,19 @@ function statusBadgeClass(status: Task["status"]): string {
         : "bg-slate-100 text-slate-600";
 }
 
-function TaskRows({ projectNames, tasks }: { projectNames: Map<string, string>; tasks: Task[] }) {
+function TaskRows({ projectNames, tasks }: { projectNames: Map<string, { name: string; color?: string }>; tasks: Task[] }) {
   return (
     <section aria-label="All tasks" className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       <ul className="divide-y divide-slate-200">
         {tasks.map((task) => {
-          const projectName = projectNames.get(task.projectId);
+          const project = projectNames.get(task.projectId);
           const row = (
             <>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-baseline sm:justify-between sm:gap-5">
                 <div className="flex min-w-0 flex-wrap items-baseline gap-2">
-                  <span className="shrink-0 rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-                    {projectName ?? "Unknown project"}
-                  </span>
+                  {project ? (
+                    <ProjectChip projectId={task.projectId} name={project.name} color={project.color} />
+                  ) : <UnknownProjectChip />}
                   <span className={`shrink-0 rounded-md px-2 py-0.5 text-xs font-medium ${statusBadgeClass(task.status)}`}>
                     {TASK_STATUS_LABELS[task.status]}
                   </span>
@@ -74,7 +75,7 @@ function TaskRows({ projectNames, tasks }: { projectNames: Map<string, string>; 
 
           return (
             <li key={task.id} className="relative">
-              {projectName ? (
+              {project ? (
                 <>
                   <Link
                     href={`/projects/${task.projectId}/tasks/${task.id}`}
@@ -113,8 +114,8 @@ export default async function TasksPage(props: PageProps<"/tasks">) {
   const page = Number.isInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1;
   const selectedStatus = taskFilterStatus(requestedStatus, requestedAll);
 
-  let projects: { id: string; name: string }[] = [];
-  let projectNames = new Map<string, string>();
+  let projects: { id: string; name: string; color?: string }[] = [];
+  let projectNames = new Map<string, { name: string; color?: string }>();
   let taskPage: Awaited<ReturnType<typeof listAllTasks>> | undefined;
   let hasAnyTasks = false;
   let selectedProjectId = "";
@@ -122,8 +123,8 @@ export default async function TasksPage(props: PageProps<"/tasks">) {
 
   try {
     const savedProjects = await listProjects();
-    projects = savedProjects.map(({ id, name }) => ({ id, name }));
-    projectNames = new Map(projects.map((project) => [project.id, project.name]));
+    projects = savedProjects.map(({ id, name, color }) => ({ id, name, color }));
+    projectNames = new Map(projects.map((project) => [project.id, { name: project.name, color: project.color }]));
     selectedProjectId = projects.some((project) => project.id === requestedProjectId) ? requestedProjectId ?? "" : "";
     taskPage = await listAllTasks({
       page,

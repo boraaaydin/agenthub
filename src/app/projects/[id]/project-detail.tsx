@@ -5,12 +5,15 @@ import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 
 import { BrandBar } from "../../brand-bar";
+import { ProjectColorPicker } from "../project-color-picker";
+import { projectColorToken, type ProjectColorToken } from "@/lib/project-colors";
 
 type Project = {
   id: string;
   name: string;
   path: string;
   createdAt: string;
+  color?: ProjectColorToken;
 };
 
 type ApiError = { error?: string };
@@ -19,6 +22,7 @@ export default function ProjectDetail({ project, taskCount }: { project: Project
   const router = useRouter();
   const [name, setName] = useState(project.name);
   const [projectPath, setProjectPath] = useState(project.path);
+  const [color, setColor] = useState(() => projectColorToken(project.id, project.color));
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -28,6 +32,7 @@ export default function ProjectDetail({ project, taskCount }: { project: Project
   function resetForm() {
     setName(project.name);
     setProjectPath(project.path);
+    setColor(projectColorToken(project.id, project.color));
     setError("");
     setStatus("");
   }
@@ -51,7 +56,7 @@ export default function ProjectDetail({ project, taskCount }: { project: Project
       const response = await fetch(`/api/projects/${project.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, path: projectPath }),
+        body: JSON.stringify({ name, path: projectPath, color }),
       });
       const body = (await response.json()) as Project | ApiError;
 
@@ -63,6 +68,7 @@ export default function ProjectDetail({ project, taskCount }: { project: Project
       const updatedProject = body as Project;
       setName(updatedProject.name);
       setProjectPath(updatedProject.path);
+      setColor(projectColorToken(updatedProject.id, updatedProject.color));
       setStatus("Changes saved.");
       router.refresh();
     } catch {
@@ -165,6 +171,17 @@ export default function ProjectDetail({ project, taskCount }: { project: Project
             />
             <p className="mt-2 text-sm text-slate-600">The directory must already exist on this machine.</p>
           </div>
+
+          <ProjectColorPicker
+            projectId={project.id}
+            name={name}
+            color={color}
+            onColorChange={(nextColor) => {
+              setColor(nextColor);
+              setStatus("");
+            }}
+            disabled={isSubmitting}
+          />
 
           {error && (
             <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">

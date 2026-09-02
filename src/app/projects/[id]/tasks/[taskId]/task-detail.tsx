@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 
 import { BrandBar } from "../../../../brand-bar";
+import { ProjectChip } from "../../../../project-chip";
 import { taskStatusLabel, type TaskStatus } from "@/lib/task-filters";
 import { planConsoleHref } from "@/lib/task-plan";
 
@@ -23,10 +24,11 @@ type ApiError = { error?: string };
 
 type TaskDetailProps = {
   projectName: string;
+  projectColor?: string;
   task: Task;
 };
 
-export default function TaskDetail({ projectName, task }: TaskDetailProps) {
+export default function TaskDetail({ projectName, projectColor, task }: TaskDetailProps) {
   const router = useRouter();
   const taskListPath = `/tasks?project=${encodeURIComponent(task.projectId)}`;
   const taskApiPath = `/api/projects/${task.projectId}/tasks/${task.id}`;
@@ -147,7 +149,7 @@ export default function TaskDetail({ projectName, task }: TaskDetailProps) {
               href={taskListPath}
               className="text-sm font-medium text-sky-700 transition hover:text-sky-900 focus:outline-none focus:ring-3 focus:ring-sky-100"
             >
-              {projectName} tasks
+              <ProjectChip projectId={task.projectId} name={projectName} color={projectColor} /> tasks
             </Link>
             <span className="text-sm text-slate-500">Task #{task.id}</span>
             <span className={`rounded-md px-2 py-0.5 text-xs font-medium ${taskStatus === "completed" ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"}`}>

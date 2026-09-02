@@ -65,7 +65,7 @@ by the server-only `src/lib/default-settings-prompts.ts` module. The code-define
 `src/lib/agents.ts` and the prompt descriptors live in `src/lib/settings-prompts.ts`. The console selects a saved project and its agent per new session (Codex
 by default), while the settings remain available for future task and plan flows. These files
 survive server restarts; agent sessions remain in-memory only and end when the server restarts.
-Project records can be edited or deleted from their detail page. Creating a plan from a task composes the effective Task planning and After planning prompts (saved text when present, otherwise the built-in Markdown defaults) with that task's title and detail, then starts the configured Plan agent in the task's project directory through the console.
+Project records can be edited or deleted from their detail page. Each project may carry an optional palette color token; projects without one derive a stable color from their id, and the project name is shown as a white-on-color chip wherever it appears in project, task, and plan screens. Creating a plan from a task composes the effective Task planning and After planning prompts (saved text when present, otherwise the built-in Markdown defaults) with that task's title and detail, then starts the configured Plan agent in the task's project directory through the console.
 
 ### Open decisions
 
@@ -115,6 +115,7 @@ src/app/                         # Next.js application
 │   └── use-plan-run.ts           # Starts a plan session from task URL parameters
 ├── projects/                     # Projects list, creation, and detail routes
 │   ├── page.tsx                  # Projects list page
+│   ├── project-color-picker.tsx  # Shared project color picker and chip preview
 │   └── [id]/                     # Editable project detail and task-detail routes
 │       └── tasks/                # Detail routes; list and creation redirect to /tasks
 ├── settings/                     # Global agent defaults and task-flow prompt settings
@@ -123,6 +124,7 @@ src/app/                         # Next.js application
 │   ├── [planId]/                 # Editable plan detail and read-only file preview
 │   └── new/                      # Manual plan registration form
 ├── agent-console.tsx             # Client console UI
+├── project-chip.tsx              # Shared colored and unknown project-name chips
 └── page.tsx                      # Header-only home page
 src/lib/
 ├── agents.ts                     # Client-safe selectable agent catalog
@@ -131,6 +133,7 @@ src/lib/
 ├── default-settings-prompts.ts   # Server-only built-in prompt reader
 ├── plans-store.ts                # Persisted editable plan records
 ├── plan-file.ts                  # Server-only safe plan file reader/deleter
+├── project-colors.ts             # Client-safe palette tokens and deterministic project colors
 └── settings-store.ts             # Persisted global settings store
 server/
 ├── agents.ts                     # Server-only CLI command definitions
@@ -175,6 +178,7 @@ tasks in `.agent/tasks/` are archived by hand into
   When its agent exits, the plan session closes and is removed automatically.
 - A single `/tasks` screen provides server-rendered, cross-project task pagination and optional project and status filters; it defaults to open tasks, which can be completed and reopened from the list or detail page. `/tasks/new` creates tasks for any saved project. Per-project list and creation URLs redirect to these unified screens.
 - The `/plans` screen lists registered plans across projects with pagination and a project filter. Plans can be registered by hand, viewed and edited on a detail page, and deleted with optional removal of the plan file from disk. Every completed planning session automatically registers its final task file through `POST /api/plans` before its agent exits.
+- Projects are color-coded across project, task, and plan screens, with a palette color chosen on project create and detail forms.
 
 ## Agent Harness Configuration
 

@@ -1,17 +1,18 @@
 "use client";
 
+import { ProjectChip } from "../project-chip";
 import { getAgent } from "@/lib/agents";
 import type { SessionSummary } from "@/lib/agent-protocol";
 import { AgentLogo } from "./agent-logo";
 
-type SidebarProject = { path: string; name: string };
+type SidebarProject = { id: string; path: string; name: string; color?: string };
 
-function sessionLabel(cwd: string, projects: SidebarProject[]) {
-  const project = projects.find((candidate) => candidate.path === cwd);
-  if (project) {
-    return project.name;
-  }
-  return cwd.split("/").filter(Boolean).at(-1) ?? cwd;
+function sessionProject(cwd: string, projects: SidebarProject[]) {
+  return projects.find((candidate) => candidate.path === cwd);
+}
+
+function sessionLabel(cwd: string, project?: SidebarProject) {
+  return project?.name ?? cwd.split("/").filter(Boolean).at(-1) ?? cwd;
 }
 
 type SessionSidebarProps = {
@@ -55,7 +56,8 @@ export function SessionSidebar({
               const agent = getAgent(session.agent);
               const selected = session.id === selectedSessionId;
               const exited = session.state === "exited";
-              const projectName = sessionLabel(session.cwd, projects);
+              const project = sessionProject(session.cwd, projects);
+              const projectName = sessionLabel(session.cwd, project);
               const agentAccentClass = session.agent === "claude" ? "text-orange-700" : "text-emerald-700";
 
               return (
@@ -80,7 +82,16 @@ export function SessionSidebar({
                         <span>{agent.label}</span>
                       </span>
                     </span>
-                    <span className="mt-1 block truncate text-xs text-slate-500">{projectName}</span>
+                    <span className="mt-1 block truncate text-xs text-slate-500">
+                      {project ? (
+                        <ProjectChip
+                          projectId={project.id}
+                          name={project.name}
+                          color={project.color}
+                          className="inline-block max-w-full truncate align-middle"
+                        />
+                      ) : projectName}
+                    </span>
                     <span className="mt-1 block text-xs text-slate-500">{exited ? "Exited" : "Live"}</span>
                   </button>
                   {exited && (

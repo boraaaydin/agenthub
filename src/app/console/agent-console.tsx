@@ -18,6 +18,7 @@ type ConsoleProject = {
   id: string;
   name: string;
   path: string;
+  color?: string;
 };
 
 type ApiError = { error?: string };

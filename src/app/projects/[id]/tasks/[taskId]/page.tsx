@@ -48,5 +48,5 @@ export default async function TaskDetailPage(props: PageProps<"/projects/[id]/ta
     );
   }
 
-  return <TaskDetail key={task.id} projectName={project.name} task={task} />;
+  return <TaskDetail key={task.id} projectName={project.name} projectColor={project.color} task={task} />;
 }

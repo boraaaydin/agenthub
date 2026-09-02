@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 
 import { BrandBar } from "../../brand-bar";
+import { ProjectChip, UnknownProjectChip } from "../../project-chip";
 import { DeletePlanSection } from "./delete-plan-section";
 import { PlanFilePreview } from "./plan-file-preview";
 
@@ -19,7 +20,7 @@ type Plan = {
   updatedAt: string;
 };
 
-type Project = { id: string; name: string };
+type Project = { id: string; name: string; color?: string };
 type Task = { id: number; title: string };
 type ApiError = { error?: string };
 
@@ -141,7 +142,9 @@ export default function PlanDetail({ plan, projects, tasksByProject, taskExists,
           </div>
           <h1 className="mt-4 break-words text-3xl font-semibold tracking-[-0.03em]">{currentPlan.title}</h1>
           <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm text-slate-600">
-            <span>{currentProject?.name ?? "Unknown project"}</span>
+            {currentProject ? (
+              <ProjectChip projectId={currentProject.id} name={currentProject.name} color={currentProject.color} />
+            ) : <UnknownProjectChip />}
             {currentProject && currentTaskExists ? (
               <Link href={`/projects/${currentPlan.projectId}/tasks/${currentPlan.taskId}`} className="font-medium text-sky-700 transition hover:text-sky-900 focus:outline-none focus:ring-3 focus:ring-sky-100">Task #{currentPlan.taskId}</Link>
             ) : <span>Task #{currentPlan.taskId}</span>}
