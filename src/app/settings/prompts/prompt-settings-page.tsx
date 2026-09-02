@@ -1,16 +1,20 @@
-import SettingsForm from "./settings-form";
+import type { SettingsPrompt } from "@/lib/settings-prompts";
 import { defaultSettings, readSettings, SettingsStoreError } from "@/lib/settings-store";
 
-export const dynamic = "force-dynamic";
+import PromptForm from "./prompt-form";
 
-export default async function SettingsPage() {
+type PromptSettingsPageProps = {
+  prompt: SettingsPrompt;
+};
+
+export default async function PromptSettingsPage({ prompt }: PromptSettingsPageProps) {
   let settings = defaultSettings();
   let error = "";
 
   try {
     settings = await readSettings();
   } catch (caughtError) {
-    console.error("Unable to render settings", caughtError);
+    console.error("Unable to render settings prompt", caughtError);
     error = caughtError instanceof SettingsStoreError
       ? "Settings could not be read. Check data/settings.json, then save valid settings to replace it."
       : "Settings could not be loaded. Reload this page and try again.";
@@ -23,7 +27,7 @@ export default async function SettingsPage() {
           {error}
         </p>
       )}
-      <SettingsForm settings={settings} />
+      <PromptForm field={prompt.field} value={settings[prompt.field]} />
     </>
   );
 }

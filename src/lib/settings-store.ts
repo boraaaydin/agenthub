@@ -6,11 +6,14 @@ import {
   isAgentId,
   type AgentId,
 } from "./agents";
+import type { SettingsPromptField } from "./settings-prompts";
 
 export type Settings = {
   taskAgent: AgentId;
   planAgent: AgentId;
-};
+} & Record<SettingsPromptField, string>;
+
+type SettingsUpdate = Partial<Settings>;
 
 export const SETTINGS_FILE_PATH = path.join(process.cwd(), "data", "settings.json");
 
@@ -20,19 +23,31 @@ export class SettingsValidationError extends Error {}
 
 export class SettingsStoreError extends Error {}
 
-function defaultSettings(): Settings {
+const PROMPT_FIELDS: SettingsPromptField[] = [
+  "planPrompt",
+  "planPostPrompt",
+  "taskPrompt",
+  "taskPostPrompt",
+];
+
+export function defaultSettings(): Settings {
   return {
     taskAgent: DEFAULT_AGENT_ID,
     planAgent: DEFAULT_AGENT_ID,
+    planPrompt: "",
+    planPostPrompt: "",
+    taskPrompt: "",
+    taskPostPrompt: "",
   };
 }
 
 function parseDocument(value: unknown): Settings {
-  if (!value || typeof value !== "object") {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new SettingsStoreError(`Settings data in ${SETTINGS_FILE_PATH} has an invalid format.`);
   }
 
-  const { taskAgent, planAgent } = value as Record<string, unknown>;
+  const document = value as Record<string, unknown>;
+  const { taskAgent, planAgent } = document;
   if (typeof taskAgent !== "string" || typeof planAgent !== "string") {
     throw new SettingsStoreError(`Settings data in ${SETTINGS_FILE_PATH} has an invalid format.`);
   }
@@ -40,23 +55,54 @@ function parseDocument(value: unknown): Settings {
     throw new SettingsStoreError(`Settings data in ${SETTINGS_FILE_PATH} references an unknown agent.`);
   }
 
-  return { taskAgent, planAgent };
+  const settings = { ...defaultSettings(), taskAgent, planAgent };
+  for (const field of PROMPT_FIELDS) {
+    if (field in document) {
+      if (typeof document[field] !== "string") {
+        throw new SettingsStoreError(`Settings data in ${SETTINGS_FILE_PATH} has an invalid format.`);
+      }
+      settings[field] = document[field];
+    }
+  }
+
+  return settings;
 }
 
-function settingsDetails(input: unknown): Settings {
-  if (!input || typeof input !== "object") {
-    throw new SettingsValidationError("Task and Plan agents are required.");
+function settingsDetails(input: unknown): SettingsUpdate {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    throw new SettingsValidationError("Settings update must be an object.");
   }
 
-  const { taskAgent, planAgent } = input as Record<string, unknown>;
-  if (!isAgentId(taskAgent)) {
-    throw new SettingsValidationError("Select a valid Task agent.");
+  const update: SettingsUpdate = {};
+  const document = input as Record<string, unknown>;
+
+  if ("taskAgent" in document) {
+    if (!isAgentId(document.taskAgent)) {
+      throw new SettingsValidationError("Select a valid Task agent.");
+    }
+    update.taskAgent = document.taskAgent;
   }
-  if (!isAgentId(planAgent)) {
-    throw new SettingsValidationError("Select a valid Plan agent.");
+  if ("planAgent" in document) {
+    if (!isAgentId(document.planAgent)) {
+      throw new SettingsValidationError("Select a valid Plan agent.");
+    }
+    update.planAgent = document.planAgent;
   }
 
-  return { taskAgent, planAgent };
+  for (const field of PROMPT_FIELDS) {
+    if (field in document) {
+      const value = document[field];
+      if (typeof value !== "string") {
+        throw new SettingsValidationError("Prompts must be text.");
+      }
+      if (value.length > 20_000) {
+        throw new SettingsValidationError("Prompts must be 20,000 characters or fewer.");
+      }
+      update[field] = value;
+    }
+  }
+
+  return update;
 }
 
 async function readDocument(): Promise<Settings> {
@@ -103,9 +149,10 @@ export async function readSettings(): Promise<Settings> {
 }
 
 export async function saveSettings(input: unknown): Promise<Settings> {
-  const settings = settingsDetails(input);
+  const update = settingsDetails(input);
 
   return serializeWrite(async () => {
+    const settings = { ...await readDocument(), ...update };
     await writeDocument(settings);
     return settings;
   });
