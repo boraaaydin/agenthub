@@ -292,6 +292,7 @@ export function AgentConsole() {
         <div className="grid min-h-0 gap-6 lg:grid-cols-[17rem_minmax(0,1fr)]">
           <SessionSidebar
             sessions={sessions}
+            projects={projects}
             selectedSessionId={selectedSessionId}
             onSelect={selectSession}
             onNewSession={startNewSession}

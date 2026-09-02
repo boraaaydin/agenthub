@@ -2,9 +2,21 @@
 
 import { getAgent } from "@/lib/agents";
 import type { SessionSummary } from "@/lib/agent-protocol";
+import { AgentLogo } from "./agent-logo";
+
+type SidebarProject = { path: string; name: string };
+
+function sessionLabel(cwd: string, projects: SidebarProject[]) {
+  const project = projects.find((candidate) => candidate.path === cwd);
+  if (project) {
+    return project.name;
+  }
+  return cwd.split("/").filter(Boolean).at(-1) ?? cwd;
+}
 
 type SessionSidebarProps = {
   sessions: SessionSummary[];
+  projects: SidebarProject[];
   selectedSessionId: string | null;
   onSelect: (sessionId: string) => void;
   onNewSession: () => void;
@@ -13,6 +25,7 @@ type SessionSidebarProps = {
 
 export function SessionSidebar({
   sessions,
+  projects,
   selectedSessionId,
   onSelect,
   onNewSession,
@@ -42,6 +55,8 @@ export function SessionSidebar({
               const agent = getAgent(session.agent);
               const selected = session.id === selectedSessionId;
               const exited = session.state === "exited";
+              const projectName = sessionLabel(session.cwd, projects);
+              const agentAccentClass = session.agent === "claude" ? "text-orange-700" : "text-emerald-700";
 
               return (
                 <li key={session.id} className="flex items-stretch gap-1">
@@ -60,11 +75,12 @@ export function SessionSidebar({
                         aria-hidden="true"
                         className={`h-2 w-2 shrink-0 rounded-full ${exited ? "bg-slate-400" : "bg-emerald-500"}`}
                       />
-                      <span className="truncate">{agent.label}</span>
+                      <span className={`flex items-center gap-1.5 ${agentAccentClass}`}>
+                        <AgentLogo agent={session.agent} className="h-4 w-4 shrink-0" />
+                        <span>{agent.label}</span>
+                      </span>
                     </span>
-                    <span className="mt-1 block truncate font-mono text-xs text-slate-500" title={session.cwd}>
-                      {session.cwd}
-                    </span>
+                    <span className="mt-1 block truncate text-xs text-slate-500">{projectName}</span>
                     <span className="mt-1 block text-xs text-slate-500">{exited ? "Exited" : "Live"}</span>
                   </button>
                   {exited && (
@@ -72,7 +88,7 @@ export function SessionSidebar({
                       type="button"
                       onClick={() => onDismiss(session.id)}
                       className="self-center rounded-md p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus:ring-3 focus:ring-sky-100"
-                      aria-label={`Dismiss ${agent.label} session in ${session.cwd}`}
+                      aria-label={`Dismiss ${agent.label} session in ${projectName}`}
                     >
                       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true" className="h-4 w-4">
                         <path d="m4 4 8 8M12 4l-8 8" />
