@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 
 import { BrandLink } from "../../../../brand-link";
+import { taskStatusLabel, type TaskStatus } from "@/lib/task-filters";
 import { planConsoleHref } from "@/lib/task-plan";
 
 type Task = {
@@ -12,6 +13,8 @@ type Task = {
   projectId: string;
   title: string;
   detail: string;
+  status: TaskStatus;
+  completedAt: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -30,7 +33,9 @@ export default function TaskDetail({ projectName, task }: TaskDetailProps) {
   const [title, setTitle] = useState(task.title);
   const [detail, setDetail] = useState(task.detail);
   const [error, setError] = useState("");
-  const [status, setStatus] = useState("");
+  const [statusMessage, setStatusMessage] = useState("");
+  const [taskStatus, setTaskStatus] = useState(task.status);
+  const [completedAt, setCompletedAt] = useState(task.completedAt);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleteConfirming, setIsDeleteConfirming] = useState(false);
 
@@ -38,13 +43,44 @@ export default function TaskDetail({ projectName, task }: TaskDetailProps) {
     setTitle(task.title);
     setDetail(task.detail);
     setError("");
-    setStatus("");
+    setStatusMessage("");
+  }
+
+  async function changeTaskStatus() {
+    const nextStatus = taskStatus === "completed" ? "open" : "completed";
+    setError("");
+    setStatusMessage("");
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch(taskApiPath, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      const body = (await response.json()) as Task | ApiError;
+
+      if (!response.ok) {
+        setError((body as ApiError).error ?? "Unable to update the task. Try again.");
+        return;
+      }
+
+      const updatedTask = body as Task;
+      setTaskStatus(updatedTask.status);
+      setCompletedAt(updatedTask.completedAt);
+      setStatusMessage(updatedTask.status === "completed" ? "Task completed." : "Task reopened.");
+      router.refresh();
+    } catch {
+      setError("Unable to reach the server. Check your connection and try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   async function saveTask(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
-    setStatus("");
+    setStatusMessage("");
 
     if (!title.trim()) {
       setError("Enter a task title.");
@@ -68,7 +104,9 @@ export default function TaskDetail({ projectName, task }: TaskDetailProps) {
       const updatedTask = body as Task;
       setTitle(updatedTask.title);
       setDetail(updatedTask.detail);
-      setStatus("Changes saved.");
+      setTaskStatus(updatedTask.status);
+      setCompletedAt(updatedTask.completedAt);
+      setStatusMessage("Changes saved.");
       router.refresh();
     } catch {
       setError("Unable to reach the server. Check your connection and try again.");
@@ -79,7 +117,7 @@ export default function TaskDetail({ projectName, task }: TaskDetailProps) {
 
   async function deleteTask() {
     setError("");
-    setStatus("");
+    setStatusMessage("");
     setIsSubmitting(true);
 
     try {
@@ -112,15 +150,33 @@ export default function TaskDetail({ projectName, task }: TaskDetailProps) {
               {projectName} tasks
             </Link>
             <span className="text-sm text-slate-500">Task #{task.id}</span>
+            <span className={`rounded-md px-2 py-0.5 text-xs font-medium ${taskStatus === "completed" ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"}`}>
+              {taskStatusLabel(taskStatus)}
+            </span>
           </div>
           <h1 className="mt-4 break-words text-3xl font-semibold tracking-[-0.03em]">{task.title}</h1>
           <p className="mt-1 text-sm leading-6 text-slate-600">Update this task&apos;s title and detail.</p>
-          <Link
-            href={planConsoleHref(task.projectId, task.id)}
-            className="mt-4 inline-flex h-10 items-center rounded-xl border border-sky-200 bg-white px-4 text-sm font-medium text-sky-800 shadow-sm transition hover:border-sky-300 hover:bg-sky-50 focus:outline-none focus:ring-3 focus:ring-sky-100"
-          >
-            Create plan
-          </Link>
+          {completedAt && (
+            <p className="mt-2 text-sm text-slate-600">
+              Completed {new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(completedAt))}
+            </p>
+          )}
+          <div className="mt-4 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={changeTaskStatus}
+              disabled={isSubmitting || (taskStatus !== "open" && taskStatus !== "completed")}
+              className="inline-flex h-10 items-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-800 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-3 focus:ring-sky-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+            >
+              {isSubmitting ? (taskStatus === "completed" ? "Reopening…" : "Completing…") : taskStatus === "completed" ? "Reopen" : "Complete"}
+            </button>
+            <Link
+              href={planConsoleHref(task.projectId, task.id)}
+              className="inline-flex h-10 items-center rounded-xl border border-sky-200 bg-white px-4 text-sm font-medium text-sky-800 shadow-sm transition hover:border-sky-300 hover:bg-sky-50 focus:outline-none focus:ring-3 focus:ring-sky-100"
+            >
+              Create plan
+            </Link>
+          </div>
         </header>
 
         <form onSubmit={saveTask} className="mt-8 space-y-6" noValidate>
@@ -131,7 +187,7 @@ export default function TaskDetail({ projectName, task }: TaskDetailProps) {
               value={title}
               onChange={(event) => {
                 setTitle(event.target.value);
-                setStatus("");
+                setStatusMessage("");
               }}
               autoComplete="off"
               disabled={isSubmitting}
@@ -146,7 +202,7 @@ export default function TaskDetail({ projectName, task }: TaskDetailProps) {
               value={detail}
               onChange={(event) => {
                 setDetail(event.target.value);
-                setStatus("");
+                setStatusMessage("");
               }}
               disabled={isSubmitting}
               rows={9}
@@ -155,7 +211,7 @@ export default function TaskDetail({ projectName, task }: TaskDetailProps) {
           </div>
 
           {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>}
-          {status && <p role="status" className="text-sm text-emerald-700">{status}</p>}
+          {statusMessage && <p role="status" className="text-sm text-emerald-700">{statusMessage}</p>}
 
           <div className="flex flex-wrap items-center gap-3 pt-2">
             <button

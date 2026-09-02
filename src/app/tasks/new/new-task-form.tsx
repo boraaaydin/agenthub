@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 
 import { BrandLink } from "../../brand-link";
+import { tasksHref, type TaskFilterStatus } from "@/lib/task-filters";
 
 type Project = {
   id: string;
@@ -16,21 +17,18 @@ type ApiError = { error?: string };
 type NewTaskFormProps = {
   projects: Project[];
   initialProjectId: string;
+  initialStatus: TaskFilterStatus;
   error: string;
 };
 
-function taskListHref(projectId: string): string {
-  return projectId ? `/tasks?project=${encodeURIComponent(projectId)}` : "/tasks";
-}
-
-export function NewTaskForm({ projects, initialProjectId, error: loadError }: NewTaskFormProps) {
+export function NewTaskForm({ projects, initialProjectId, initialStatus, error: loadError }: NewTaskFormProps) {
   const router = useRouter();
   const [projectId, setProjectId] = useState(initialProjectId);
   const [title, setTitle] = useState("");
   const [detail, setDetail] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const taskListPath = taskListHref(projectId);
+  const taskListPath = tasksHref({ projectId, status: initialStatus });
 
   async function createTask(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -59,7 +57,7 @@ export function NewTaskForm({ projects, initialProjectId, error: loadError }: Ne
         return;
       }
 
-      router.replace(taskListHref(projectId));
+      router.replace(tasksHref({ projectId, status: initialStatus }));
     } catch {
       setError("Unable to reach the server. Check your connection and try again.");
     } finally {

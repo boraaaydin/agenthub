@@ -51,8 +51,9 @@ Node server  ──  node-pty  ──  claude / codex CLI process
 
 Project metadata is persisted separately in a git-ignored `data/projects.json` file. Per-project
 tasks are persisted in git-ignored `data/tasks.json`, carry globally sequential integer ids
-starting at `1`, are listed with server-side URL pagination, and can be retained or removed when
-their project is deleted. Global Task and Plan agent defaults plus the four global task-flow prompts are
+starting at `1`, include a lifecycle status and optional completion timestamp, are listed with
+server-side URL pagination and status filtering, and can be retained or removed when their
+project is deleted. Global Task and Plan agent defaults plus the four global task-flow prompts are
 persisted in git-ignored `data/settings.json`. When a prompt has no saved value, settings displays
 the matching built-in prompt from `src/lib/default-prompts/` in muted text; these defaults are read
 by the server-only `src/lib/default-settings-prompts.ts` module. The code-defined agent catalog lives in
@@ -160,7 +161,7 @@ tasks in `.agent/tasks/` are archived by hand into
   and effective planning/after-planning prompts, with the composed multi-line prompt pasted and
   submitted as one terminal input. When its agent exits, the plan session closes and is removed
   automatically.
-- A single `/tasks` screen provides server-rendered, cross-project task pagination and an optional project filter; `/tasks/new` creates tasks for any saved project. Per-project list and creation URLs redirect to these unified screens.
+- A single `/tasks` screen provides server-rendered, cross-project task pagination and optional project and status filters; it defaults to open tasks, which can be completed and reopened from the list or detail page. `/tasks/new` creates tasks for any saved project. Per-project list and creation URLs redirect to these unified screens.
 
 ## Agent Harness Configuration
 

@@ -3,17 +3,34 @@ import "server-only";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 
+import {
+  DEFAULT_TASK_STATUS,
+  isTaskStatus,
+  TASK_STATUSES as TASK_STATUS_VALUES,
+  type TaskStatus,
+} from "./task-filters";
+
+export type { TaskStatus } from "./task-filters";
+export const TASK_STATUSES = TASK_STATUS_VALUES;
+
 export type Task = {
   id: number;
   projectId: string;
   title: string;
   detail: string;
+  status: TaskStatus;
+  completedAt: string | null;
   createdAt: string;
   updatedAt: string;
 };
 
+type StoredTask = Omit<Task, "status" | "completedAt"> & {
+  status?: TaskStatus;
+  completedAt?: string | null;
+};
+
 type TasksDocument = {
-  tasks: Task[];
+  tasks: StoredTask[];
 };
 
 type PaginationInput = {
@@ -38,7 +55,7 @@ export class TaskValidationError extends Error {}
 
 export class TaskStoreError extends Error {}
 
-function isTask(value: unknown): value is Task {
+function isTask(value: unknown): value is StoredTask {
   if (!value || typeof value !== "object") {
     return false;
   }
@@ -52,8 +69,18 @@ function isTask(value: unknown): value is Task {
     typeof task.title === "string" &&
     typeof task.detail === "string" &&
     typeof task.createdAt === "string" &&
-    typeof task.updatedAt === "string"
+    typeof task.updatedAt === "string" &&
+    (task.status === undefined || isTaskStatus(task.status)) &&
+    (task.completedAt === undefined || task.completedAt === null || typeof task.completedAt === "string")
   );
+}
+
+function normalizeTask(task: StoredTask): Task {
+  return {
+    ...task,
+    status: task.status ?? DEFAULT_TASK_STATUS,
+    completedAt: task.completedAt ?? null,
+  };
 }
 
 function parseDocument(value: unknown): TasksDocument {
@@ -120,6 +147,42 @@ function taskDetails(input: unknown): { title: string; detail: string } {
   return { title: title.trim(), detail };
 }
 
+type TaskPatch = Partial<Pick<Task, "title" | "detail" | "status">>;
+
+function taskPatch(input: unknown): TaskPatch {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    throw new TaskValidationError("Provide at least one task field.");
+  }
+
+  const values = input as Record<string, unknown>;
+  const patch: TaskPatch = {};
+
+  if (Object.hasOwn(values, "title")) {
+    if (typeof values.title !== "string" || !values.title.trim()) {
+      throw new TaskValidationError("Enter a task title.");
+    }
+    patch.title = values.title.trim();
+  }
+  if (Object.hasOwn(values, "detail")) {
+    if (typeof values.detail !== "string") {
+      throw new TaskValidationError("Enter task details.");
+    }
+    patch.detail = values.detail;
+  }
+  if (Object.hasOwn(values, "status")) {
+    if (!isTaskStatus(values.status)) {
+      throw new TaskValidationError("Select a valid task status.");
+    }
+    patch.status = values.status;
+  }
+
+  if (Object.keys(patch).length === 0) {
+    throw new TaskValidationError("Provide at least one task field.");
+  }
+
+  return patch;
+}
+
 function normalizePage(page: number): number {
   return Number.isFinite(page) && page >= 1 ? Math.floor(page) : 1;
 }
@@ -130,12 +193,13 @@ function normalizePageSize(pageSize: number): number {
 
 function paginateTasks(
   tasks: Task[],
-  { page, pageSize, projectId }: PaginationInput & { projectId?: string },
+  { page, pageSize, projectId, status }: PaginationInput & { projectId?: string; status?: TaskStatus },
 ): PaginatedTasks {
   const normalizedPage = normalizePage(page);
   const normalizedPageSize = normalizePageSize(pageSize);
   const filteredTasks = tasks
     .filter((task) => projectId === undefined || task.projectId === projectId)
+    .filter((task) => status === undefined || task.status === status)
     .sort((first, second) => second.createdAt.localeCompare(first.createdAt));
   const total = filteredTasks.length;
 
@@ -150,22 +214,23 @@ function paginateTasks(
 
 export async function listProjectTasks(
   projectId: string,
-  { page, pageSize }: PaginationInput,
+  { page, pageSize, status }: PaginationInput & { status?: TaskStatus },
 ): Promise<PaginatedTasks> {
   const { tasks } = await readDocument();
-  return paginateTasks(tasks, { page, pageSize, projectId });
+  return paginateTasks(tasks.map(normalizeTask), { page, pageSize, projectId, status });
 }
 
 export async function listAllTasks(
-  { page, pageSize, projectId }: PaginationInput & { projectId?: string },
+  { page, pageSize, projectId, status }: PaginationInput & { projectId?: string; status?: TaskStatus },
 ): Promise<PaginatedTasks> {
   const { tasks } = await readDocument();
-  return paginateTasks(tasks, { page, pageSize, projectId });
+  return paginateTasks(tasks.map(normalizeTask), { page, pageSize, projectId, status });
 }
 
 export async function getTask(projectId: string, taskId: number): Promise<Task | null> {
   const { tasks } = await readDocument();
-  return tasks.find((task) => task.projectId === projectId && task.id === taskId) ?? null;
+  const task = tasks.find((candidate) => candidate.projectId === projectId && candidate.id === taskId);
+  return task ? normalizeTask(task) : null;
 }
 
 export async function createTask(projectId: string, input: unknown): Promise<Task> {
@@ -181,6 +246,8 @@ export async function createTask(projectId: string, input: unknown): Promise<Tas
       projectId,
       title: details.title,
       detail: details.detail,
+      status: "open",
+      completedAt: null,
       createdAt: now,
       updatedAt: now,
     };
@@ -192,7 +259,7 @@ export async function createTask(projectId: string, input: unknown): Promise<Tas
 }
 
 export async function updateTask(projectId: string, taskId: number, input: unknown): Promise<Task | null> {
-  const details = taskDetails(input);
+  const patch = taskPatch(input);
 
   return serializeWrite(async () => {
     const document = await readDocument();
@@ -201,11 +268,19 @@ export async function updateTask(projectId: string, taskId: number, input: unkno
       return null;
     }
 
-    task.title = details.title;
-    task.detail = details.detail;
+    if (patch.title !== undefined) {
+      task.title = patch.title;
+    }
+    if (patch.detail !== undefined) {
+      task.detail = patch.detail;
+    }
+    if (patch.status !== undefined) {
+      task.status = patch.status;
+      task.completedAt = patch.status === "completed" ? new Date().toISOString() : null;
+    }
     task.updatedAt = new Date().toISOString();
     await writeDocument(document);
-    return task;
+    return normalizeTask(task);
   });
 }
 
@@ -219,7 +294,7 @@ export async function deleteTask(projectId: string, taskId: number): Promise<Tas
 
     const [deletedTask] = document.tasks.splice(index, 1);
     await writeDocument(document);
-    return deletedTask;
+    return normalizeTask(deletedTask);
   });
 }
 

@@ -2,23 +2,19 @@
 
 import { useRouter } from "next/navigation";
 
+import { tasksHref, type TaskFilterStatus } from "@/lib/task-filters";
+
 type ProjectFilterProps = {
   projects: { id: string; name: string }[];
   selectedProjectId: string;
+  selectedStatus: TaskFilterStatus;
 };
 
-export function ProjectFilter({ projects, selectedProjectId }: ProjectFilterProps) {
+export function ProjectFilter({ projects, selectedProjectId, selectedStatus }: ProjectFilterProps) {
   const router = useRouter();
 
   function changeProject(projectId: string) {
-    const searchParams = new URLSearchParams();
-    if (projectId) {
-      searchParams.set("project", projectId);
-    }
-    searchParams.delete("page");
-
-    const query = searchParams.toString();
-    router.push(query ? `/tasks?${query}` : "/tasks");
+    router.push(tasksHref({ projectId, status: selectedStatus }));
   }
 
   return (

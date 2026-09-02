@@ -8,6 +8,8 @@ export default async function ProjectTasksPage(props: PageProps<"/projects/[id]/
   const { id } = await props.params;
   const searchParams = await props.searchParams;
   const requestedPage = Array.isArray(searchParams.page) ? searchParams.page[0] : searchParams.page;
+  const requestedStatus = Array.isArray(searchParams.status) ? searchParams.status[0] : searchParams.status;
+  const requestedAll = Array.isArray(searchParams.all) ? searchParams.all[0] : searchParams.all;
   let project;
   let couldNotLoadProject = false;
 
@@ -23,6 +25,12 @@ export default async function ProjectTasksPage(props: PageProps<"/projects/[id]/
   }
 
   const target = new URLSearchParams({ project: id });
+  if (requestedStatus !== undefined) {
+    target.set("status", requestedStatus);
+  }
+  if (requestedAll !== undefined) {
+    target.set("all", requestedAll);
+  }
   if (requestedPage !== undefined) {
     target.set("page", requestedPage);
   }

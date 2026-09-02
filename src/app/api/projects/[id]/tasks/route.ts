@@ -6,6 +6,7 @@ import {
   TaskValidationError,
   TASKS_PAGE_SIZE,
 } from "@/lib/tasks-store";
+import { isTaskStatus } from "@/lib/task-filters";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,11 @@ function pageFromRequest(request: Request): number {
   const value = new URL(request.url).searchParams.get("page");
   const page = value ? Number.parseInt(value, 10) : Number.NaN;
   return Number.isInteger(page) && page > 0 ? page : 1;
+}
+
+function statusFromRequest(request: Request) {
+  const status = new URL(request.url).searchParams.get("status");
+  return isTaskStatus(status) ? status : undefined;
 }
 
 export async function GET(
@@ -30,6 +36,7 @@ export async function GET(
     return Response.json(await listProjectTasks(id, {
       page: pageFromRequest(request),
       pageSize: TASKS_PAGE_SIZE,
+      status: statusFromRequest(request),
     }));
   } catch (error) {
     console.error("Unable to list project tasks", error);

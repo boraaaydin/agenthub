@@ -1,4 +1,5 @@
 import { NewTaskForm } from "./new-task-form";
+import { taskFilterStatus } from "@/lib/task-filters";
 import { listProjects, ProjectStoreError } from "@/lib/projects-store";
 
 export const dynamic = "force-dynamic";
@@ -6,6 +7,8 @@ export const dynamic = "force-dynamic";
 export default async function NewTaskPage(props: PageProps<"/tasks/new">) {
   const searchParams = await props.searchParams;
   const requestedProjectId = Array.isArray(searchParams.project) ? searchParams.project[0] : searchParams.project;
+  const requestedStatus = Array.isArray(searchParams.status) ? searchParams.status[0] : searchParams.status;
+  const requestedAll = Array.isArray(searchParams.all) ? searchParams.all[0] : searchParams.all;
   let projects: { id: string; name: string }[] = [];
   let error = "";
 
@@ -25,5 +28,10 @@ export default async function NewTaskPage(props: PageProps<"/tasks/new">) {
       ? projects[0].id
       : "";
 
-  return <NewTaskForm projects={projects} initialProjectId={selectedProjectId} error={error} />;
+  return <NewTaskForm
+    projects={projects}
+    initialProjectId={selectedProjectId}
+    initialStatus={taskFilterStatus(requestedStatus, requestedAll)}
+    error={error}
+  />;
 }
