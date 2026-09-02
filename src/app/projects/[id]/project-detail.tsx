@@ -89,7 +89,7 @@ export default function ProjectDetail({ project, taskCount }: { project: Project
         return;
       }
 
-      router.replace("/");
+      router.replace("/projects");
     } catch {
       setError("Unable to reach the server. Check your connection and try again.");
     } finally {
@@ -105,7 +105,7 @@ export default function ProjectDetail({ project, taskCount }: { project: Project
             <BrandLink />
             <div className="mt-3">
               <Link
-                href="/"
+                href="/projects"
                 className="text-sm font-medium text-sky-700 transition hover:text-sky-900 focus:outline-none focus:ring-3 focus:ring-sky-100"
               >
                 Projects

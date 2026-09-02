@@ -42,7 +42,7 @@ export default function NewProjectPage() {
         return;
       }
 
-      router.replace("/");
+      router.replace("/projects");
     } catch {
       setError("Unable to reach the server. Check your connection and try again.");
     } finally {
@@ -57,7 +57,7 @@ export default function NewProjectPage() {
           <BrandLink />
           <div className="mt-3">
             <Link
-              href="/"
+              href="/projects"
               className="text-sm font-medium text-sky-700 transition hover:text-sky-900 focus:outline-none focus:ring-3 focus:ring-sky-100"
             >
               Projects
@@ -116,7 +116,7 @@ export default function NewProjectPage() {
               {isSubmitting ? "Creating project…" : "Create project"}
             </button>
             <Link
-              href="/"
+              href="/projects"
               className="h-11 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium leading-none text-slate-800 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-3 focus:ring-sky-100"
             >
               Cancel

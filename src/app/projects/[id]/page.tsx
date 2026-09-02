@@ -32,7 +32,7 @@ export default async function ProjectDetailPage(props: PageProps<"/projects/[id]
           <BrandLink />
           <div className="mt-3">
             <Link
-              href="/"
+              href="/projects"
               className="text-sm font-medium text-sky-700 transition hover:text-sky-900 focus:outline-none focus:ring-3 focus:ring-sky-100"
             >
               Projects

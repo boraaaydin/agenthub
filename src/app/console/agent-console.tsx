@@ -279,7 +279,7 @@ export function AgentConsole() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <Link href="/" className="text-sm font-medium text-sky-700 transition hover:text-sky-900 focus:outline-none focus:ring-3 focus:ring-sky-100">
+            <Link href="/projects" className="text-sm font-medium text-sky-700 transition hover:text-sky-900 focus:outline-none focus:ring-3 focus:ring-sky-100">
               Projects
             </Link>
             <div className="flex items-center gap-2 text-sm text-slate-600" aria-live="polite">

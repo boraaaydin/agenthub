@@ -101,12 +101,13 @@ src/app/                         # Next.js application
 │   └── [id]/tasks/               # Route Handlers for per-project tasks
 ├── api/settings/                 # Route Handler for global agent defaults
 ├── console/                      # Multi-session console route and colocated client components
-├── projects/                     # Project creation and detail routes
+├── projects/                     # Projects list, creation, and detail routes
+│   ├── page.tsx                  # Projects list page
 │   └── [id]/                     # Editable project detail and task-list routes
 │       └── tasks/                # Paginated task list, creation, and detail routes
 ├── settings/                     # Global Task and Plan agent settings
 ├── agent-console.tsx             # Client console UI
-└── page.tsx                      # Projects home page
+└── page.tsx                      # Header-only home page
 src/lib/
 ├── agents.ts                     # Client-safe selectable agent catalog
 ├── agent-protocol.ts             # WebSocket session protocol shared by client and server
