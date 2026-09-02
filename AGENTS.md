@@ -1,3 +1,8 @@
+# AGENTS.md
+
+- Always use the `.agent/PROJECT_DOCUMENT.md` file for information about the project.
+- If you need to memorize any information, use the PROJECT_DOCUMENT.md file.
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 # This is NOT the Next.js you know

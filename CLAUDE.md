@@ -1,1 +1,1 @@
-@AGENTS.md
+/Users/bora/.claude/skills/agent-agnostic-development/assets/root-pointers/CLAUDE.md

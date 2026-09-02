@@ -1,0 +1,1 @@
+/Users/bora/.claude/skills/agent-agnostic-development/assets/commands/common-plan-doc.md

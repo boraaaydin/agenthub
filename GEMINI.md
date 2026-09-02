@@ -1,0 +1,1 @@
+/Users/bora/.claude/skills/agent-agnostic-development/assets/root-pointers/GEMINI.md
