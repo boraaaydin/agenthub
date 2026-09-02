@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { BrandLink } from "../../../brand-link";
 import { getProject, ProjectStoreError } from "@/lib/projects-store";
 import {
   listProjectTasks,
@@ -82,12 +83,15 @@ export default async function ProjectTasksPage(props: PageProps<"/projects/[id]/
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
         <header className="flex flex-col gap-4 border-b border-slate-200 pb-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <Link
-              href={project ? `/projects/${project.id}` : "/"}
-              className="text-sm font-medium text-sky-700 transition hover:text-sky-900 focus:outline-none focus:ring-3 focus:ring-sky-100"
-            >
-              {project ? project.name : "Projects"}
-            </Link>
+            <BrandLink />
+            <div className="mt-3">
+              <Link
+                href={project ? `/projects/${project.id}` : "/"}
+                className="text-sm font-medium text-sky-700 transition hover:text-sky-900 focus:outline-none focus:ring-3 focus:ring-sky-100"
+              >
+                {project ? project.name : "Projects"}
+              </Link>
+            </div>
             <h1 className="mt-4 break-words text-3xl font-semibold tracking-[-0.03em]">Tasks</h1>
             <p className="mt-1 text-sm leading-6 text-slate-600">Keep track of work for this project.</p>
           </div>

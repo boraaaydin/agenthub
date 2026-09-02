@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 
+import { BrandLink } from "../../../../brand-link";
+
 type Task = {
   id: string;
   projectId: string;
@@ -99,12 +101,15 @@ export default function TaskDetail({ projectName, task }: TaskDetailProps) {
     <main className="min-h-screen bg-[#f4f6fa] px-4 py-6 text-slate-900 sm:px-6 sm:py-10">
       <div className="mx-auto w-full max-w-2xl">
         <header className="border-b border-slate-200 pb-5">
-          <Link
-            href={taskListPath}
-            className="text-sm font-medium text-sky-700 transition hover:text-sky-900 focus:outline-none focus:ring-3 focus:ring-sky-100"
-          >
-            {projectName} tasks
-          </Link>
+          <BrandLink />
+          <div className="mt-3">
+            <Link
+              href={taskListPath}
+              className="text-sm font-medium text-sky-700 transition hover:text-sky-900 focus:outline-none focus:ring-3 focus:ring-sky-100"
+            >
+              {projectName} tasks
+            </Link>
+          </div>
           <h1 className="mt-4 break-words text-3xl font-semibold tracking-[-0.03em]">{task.title}</h1>
           <p className="mt-1 text-sm leading-6 text-slate-600">Update this task&apos;s title and detail.</p>
         </header>

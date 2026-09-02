@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import type { Terminal } from "@xterm/xterm";
 
+import { BrandLink } from "../brand-link";
 import { AGENTS, DEFAULT_AGENT_ID, getAgent, type AgentId } from "@/lib/agents";
 import type { ClientMessage, SessionSummary } from "@/lib/agent-protocol";
 import { SessionSidebar } from "./session-sidebar";
@@ -222,7 +223,8 @@ export function AgentConsole() {
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
         <header className="flex flex-col justify-between gap-3 border-b border-slate-200 pb-5 sm:flex-row sm:items-end">
           <div>
-            <h1 className="text-3xl font-semibold tracking-[-0.03em]">AgentHub</h1>
+            <BrandLink />
+            <h1 className="mt-3 text-3xl font-semibold tracking-[-0.03em]">Console</h1>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600">
               Run and switch between persistent agent sessions in any local directory.
             </p>

@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 
+import { BrandLink } from "../../brand-link";
+
 type Project = {
   id: string;
   name: string;
@@ -100,12 +102,15 @@ export default function ProjectDetail({ project, taskCount }: { project: Project
       <div className="mx-auto w-full max-w-2xl">
         <header className="flex flex-col gap-4 border-b border-slate-200 pb-5 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <Link
-              href="/"
-              className="text-sm font-medium text-sky-700 transition hover:text-sky-900 focus:outline-none focus:ring-3 focus:ring-sky-100"
-            >
-              Projects
-            </Link>
+            <BrandLink />
+            <div className="mt-3">
+              <Link
+                href="/"
+                className="text-sm font-medium text-sky-700 transition hover:text-sky-900 focus:outline-none focus:ring-3 focus:ring-sky-100"
+              >
+                Projects
+              </Link>
+            </div>
             <h1 className="mt-4 break-words text-3xl font-semibold tracking-[-0.03em]">{project.name}</h1>
             <p className="mt-1 text-sm leading-6 text-slate-600">Update this project&apos;s local settings.</p>
           </div>
