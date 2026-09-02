@@ -4,10 +4,10 @@ You are the completion agent for AgentHub. Run this only after implementation an
 
 ## Complete a task-file workflow
 
-For work started from `.agent/tasks/{filename}.md`:
+For work started from `.agent/tasks/{filename}.md`, archive the completed task as part of close-out. Do not leave a successfully completed task in `.agent/tasks/`.
 
-1. Create `.agent/tasks-archived/{YYYY}/{MM}/{DD}/` if needed.
-2. Move the completed file into that directory and prefix it with the current 24-hour time and application name:
+1. Create the matching date directory, `.agent/tasks-archived/{YYYY}/{MM}/{DD}/`, if needed.
+2. Move the completed task file from `.agent/tasks/` into that directory and prefix it with the current 24-hour time and application name:
    `.agent/tasks-archived/{YYYY}/{MM}/{DD}/{HHMM}_agenthub_{filename}`
 3. Audit only source files created or changed by this work. Ignore lockfiles, generated output, data files, fixtures, snapshots, and Markdown.
 4. If one or more audited source files exceed 600 lines, do not refactor them now. Create one focused follow-up task in `.agent/tasks/` that lists every oversized file, its line count, a suggested split, and acceptance criteria requiring each file to be under 600 lines with no behavior change.
