@@ -127,6 +127,11 @@ export async function listProjects(): Promise<Project[]> {
   return projects;
 }
 
+export async function getProject(id: string): Promise<Project | null> {
+  const { projects } = await readDocument();
+  return projects.find((project) => project.id === id) ?? null;
+}
+
 export async function createProject(input: unknown): Promise<Project> {
   const details = projectDetails(input);
   await validateDirectory(details.path);
@@ -141,6 +146,24 @@ export async function createProject(input: unknown): Promise<Project> {
     };
 
     document.projects.push(project);
+    await writeDocument(document);
+    return project;
+  });
+}
+
+export async function updateProject(inputId: string, input: unknown): Promise<Project | null> {
+  const details = projectDetails(input);
+  await validateDirectory(details.path);
+
+  return serializeWrite(async () => {
+    const document = await readDocument();
+    const project = document.projects.find((candidate) => candidate.id === inputId);
+    if (!project) {
+      return null;
+    }
+
+    project.name = details.name;
+    project.path = details.path;
     await writeDocument(document);
     return project;
   });

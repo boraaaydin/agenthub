@@ -51,6 +51,7 @@ Node server  ──  node-pty  ──  claude / codex CLI process
 
 Project metadata is persisted separately in a git-ignored `data/projects.json` file. This
 survives server restarts; agent sessions remain in-memory only and end when the server restarts.
+Project records can be edited or deleted from their detail page.
 
 ### Open decisions
 
@@ -93,7 +94,8 @@ The same rule is carried in the tool-managed `<!-- BEGIN:nextjs-agent-rules -->`
 src/app/                         # Next.js application
 ├── api/projects/                 # Route Handlers for persisted project metadata
 ├── console/                      # Codex console route
-├── projects/                     # Project creation route
+├── projects/                     # Project creation and detail routes
+│   └── [id]/                     # Editable project detail route
 └── page.tsx                      # Projects home page
 data/                             # Runtime JSON database (git-ignored)
 .agent/

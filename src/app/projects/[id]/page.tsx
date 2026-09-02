@@ -1,0 +1,43 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+
+import ProjectDetail from "./project-detail";
+import { getProject, ProjectStoreError } from "@/lib/projects-store";
+
+export const dynamic = "force-dynamic";
+
+export default async function ProjectDetailPage(props: PageProps<"/projects/[id]">) {
+  const { id } = await props.params;
+
+  let project;
+  try {
+    project = await getProject(id);
+  } catch (error) {
+    console.error("Unable to render project", error);
+    const message = error instanceof ProjectStoreError
+      ? "Project data could not be read. Check data/projects.json and reload this page."
+      : "Project details could not be loaded. Reload this page and try again.";
+
+    return (
+      <main className="min-h-screen bg-[#f4f6fa] px-4 py-6 text-slate-900 sm:px-6 sm:py-10">
+        <div className="mx-auto w-full max-w-2xl">
+          <Link
+            href="/"
+            className="text-sm font-medium text-sky-700 transition hover:text-sky-900 focus:outline-none focus:ring-3 focus:ring-sky-100"
+          >
+            Projects
+          </Link>
+          <p role="alert" className="mt-8 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+            {message}
+          </p>
+        </div>
+      </main>
+    );
+  }
+
+  if (!project) {
+    notFound();
+  }
+
+  return <ProjectDetail key={project.id} project={project} />;
+}

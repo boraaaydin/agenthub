@@ -26,9 +26,14 @@ function ProjectList({ projects }: { projects: Project[] }) {
     <section aria-label="Saved projects" className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       <ul className="divide-y divide-slate-200">
         {projects.map((project) => (
-          <li key={project.id} className="px-4 py-4 sm:px-5">
-            <h2 className="font-medium text-slate-900">{project.name}</h2>
-            <p className="mt-1 break-all font-mono text-sm leading-6 text-slate-600">{project.path}</p>
+          <li key={project.id}>
+            <Link
+              href={`/projects/${project.id}`}
+              className="block px-4 py-4 transition hover:bg-slate-50 focus:outline-none focus:ring-3 focus:ring-inset focus:ring-sky-100 sm:px-5"
+            >
+              <h2 className="font-medium text-slate-900">{project.name}</h2>
+              <p className="mt-1 break-all font-mono text-sm leading-6 text-slate-600">{project.path}</p>
+            </Link>
           </li>
         ))}
       </ul>
