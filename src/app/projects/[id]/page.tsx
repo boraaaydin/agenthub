@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { BrandLink } from "../../brand-link";
+import { BrandBar } from "../../brand-bar";
 import ProjectDetail from "./project-detail";
 import { getProject, ProjectStoreError } from "@/lib/projects-store";
 import { countProjectTasks, TaskStoreError } from "@/lib/tasks-store";
@@ -29,7 +29,7 @@ export default async function ProjectDetailPage(props: PageProps<"/projects/[id]
     return (
       <main className="min-h-screen bg-[#f4f6fa] px-4 py-6 text-slate-900 sm:px-6 sm:py-10">
         <div className="mx-auto w-full max-w-2xl">
-          <BrandLink />
+          <BrandBar />
           <div className="mt-3">
             <Link
               href="/projects"

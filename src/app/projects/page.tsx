@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { BrandLink } from "../brand-link";
+import { BrandBar } from "../brand-bar";
 import { listProjects, ProjectStoreError, type Project } from "@/lib/projects-store";
 
 export const dynamic = "force-dynamic";
@@ -69,7 +69,7 @@ export default async function ProjectsPage() {
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
         <header className="flex flex-col justify-between gap-4 border-b border-slate-200 pb-5 sm:flex-row sm:items-end">
           <div>
-            <BrandLink />
+            <BrandBar />
             <h1 className="mt-3 text-3xl font-semibold tracking-[-0.03em]">Projects</h1>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600">
               Keep your local coding projects ready for an agent session.

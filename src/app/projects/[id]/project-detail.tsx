@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 
-import { BrandLink } from "../../brand-link";
+import { BrandBar } from "../../brand-bar";
 
 type Project = {
   id: string;
@@ -102,7 +102,7 @@ export default function ProjectDetail({ project, taskCount }: { project: Project
       <div className="mx-auto w-full max-w-2xl">
         <header className="flex flex-col gap-4 border-b border-slate-200 pb-5 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <BrandLink />
+            <BrandBar />
             <div className="mt-3">
               <Link
                 href="/projects"

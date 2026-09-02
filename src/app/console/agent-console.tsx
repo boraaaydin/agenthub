@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import type { Terminal } from "@xterm/xterm";
 
-import { BrandLink } from "../brand-link";
+import { BrandBar } from "../brand-bar";
 import { AGENTS, DEFAULT_AGENT_ID, getAgent, type AgentId } from "@/lib/agents";
 import type { ClientMessage, SessionSummary } from "@/lib/agent-protocol";
 import { terminalSubmission } from "@/lib/terminal-input";
@@ -293,16 +293,13 @@ export function AgentConsole() {
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
         <header className="flex flex-col justify-between gap-3 border-b border-slate-200 pb-5 sm:flex-row sm:items-end">
           <div>
-            <BrandLink />
+            <BrandBar />
             <h1 className="mt-3 text-3xl font-semibold tracking-[-0.03em]">Console</h1>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600">
               Run and switch between persistent agent sessions in your saved project directories.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <Link href="/projects" className="text-sm font-medium text-sky-700 transition hover:text-sky-900 focus:outline-none focus:ring-3 focus:ring-sky-100">
-              Projects
-            </Link>
             <div className="flex items-center gap-2 text-sm text-slate-600" aria-live="polite">
               <span className={`h-2 w-2 rounded-full ${connected ? "bg-emerald-500" : "bg-slate-400"}`} />
               {connected ? "Terminal connected" : "Connecting to terminal"}

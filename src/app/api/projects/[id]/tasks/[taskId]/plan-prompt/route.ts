@@ -23,7 +23,7 @@ async function effectivePrompt(
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   context: RouteContext<"/api/projects/[id]/tasks/[taskId]/plan-prompt">,
 ) {
   const { id, taskId } = await context.params;
@@ -72,6 +72,14 @@ export async function GET(
     projectName: project.name,
     projectPath: project.path,
     taskId: task.id,
-    prompt: composePlanPrompt(planPrompt, task.id, task.title, task.detail, planPostPrompt),
+    prompt: composePlanPrompt({
+      planPrompt,
+      planPostPrompt,
+      projectId: project.id,
+      taskId: task.id,
+      taskTitle: task.title,
+      taskDetail: task.detail,
+      plansEndpoint: `${new URL(request.url).origin}/api/plans`,
+    }),
   });
 }

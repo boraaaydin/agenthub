@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 
-import { BrandLink } from "../../../../brand-link";
+import { BrandBar } from "../../../../brand-bar";
 import TaskDetail from "./task-detail";
 import { getProject, ProjectStoreError } from "@/lib/projects-store";
 import { getTask, TaskStoreError } from "@/lib/tasks-store";
@@ -40,7 +40,7 @@ export default async function TaskDetailPage(props: PageProps<"/projects/[id]/ta
     return (
       <main className="min-h-screen bg-[#f4f6fa] px-4 py-6 text-slate-900 sm:px-6 sm:py-10">
         <div className="mx-auto w-full max-w-2xl">
-          <BrandLink />
+          <BrandBar />
           <h1 className="mt-4 text-3xl font-semibold tracking-[-0.03em]">Task unavailable</h1>
           <p role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>
         </div>

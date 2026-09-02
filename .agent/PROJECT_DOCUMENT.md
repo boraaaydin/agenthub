@@ -53,7 +53,10 @@ Project metadata is persisted separately in a git-ignored `data/projects.json` f
 tasks are persisted in git-ignored `data/tasks.json`, carry globally sequential integer ids
 starting at `1`, include a lifecycle status and optional completion timestamp, are listed with
 server-side URL pagination and status filtering, and can be retained or removed when their
-project is deleted. Global Task and Plan agent defaults plus the four global task-flow prompts are
+project is deleted. Plan registrations are stored as an append-only log in git-ignored
+`data/plans.json`, with an id, projectId, taskId, title, filePath, summary, and createdAt; the
+composed planning prompt ends by registering the finished task file through `POST /api/plans`.
+Global Task and Plan agent defaults plus the four global task-flow prompts are
 persisted in git-ignored `data/settings.json`. When a prompt has no saved value, settings displays
 the matching built-in prompt from `src/lib/default-prompts/` in muted text; these defaults are read
 by the server-only `src/lib/default-settings-prompts.ts` module. The code-defined agent catalog lives in
@@ -104,6 +107,7 @@ src/app/                         # Next.js application
 ├── api/projects/                 # Route Handlers for persisted project metadata
 │   └── [id]/tasks/               # Route Handlers for per-project tasks, including plan-prompt
 ├── api/settings/                 # Route Handler for global agent defaults
+├── api/plans/                    # Route Handler for plan registrations
 ├── console/                      # Multi-session console route and colocated client components
 │   └── use-plan-run.ts           # Starts a plan session from task URL parameters
 ├── projects/                     # Projects list, creation, and detail routes
@@ -112,6 +116,7 @@ src/app/                         # Next.js application
 │       └── tasks/                # Detail routes; list and creation redirect to /tasks
 ├── settings/                     # Global agent defaults and task-flow prompt settings
 ├── tasks/                        # Global task list, project filter, and unified task creation
+├── plans/                        # Global plan list and project filter
 ├── agent-console.tsx             # Client console UI
 └── page.tsx                      # Header-only home page
 src/lib/
@@ -119,11 +124,12 @@ src/lib/
 ├── agent-protocol.ts             # WebSocket session protocol shared by client and server
 ├── default-prompts/              # Built-in task-flow prompt Markdown files
 ├── default-settings-prompts.ts   # Server-only built-in prompt reader
+├── plans-store.ts                # Persisted plan registration log
 └── settings-store.ts             # Persisted global settings store
 server/
 ├── agents.ts                     # Server-only CLI command definitions
 └── session-registry.ts           # In-memory concurrent PTY session registry
-data/                             # Runtime JSON database (git-ignored: projects.json, tasks.json, settings.json)
+data/                             # Runtime JSON database (git-ignored: projects.json, tasks.json, plans.json, settings.json)
 .agent/
 ├── PROJECT_DOCUMENT.md          # this file
 ├── commands/tasks/              # plan, do-task, do-task-post, common-plan-doc
@@ -162,6 +168,7 @@ tasks in `.agent/tasks/` are archived by hand into
   to the agent CLI as a startup argument. Follow-up prompts are pasted into the running session.
   When its agent exits, the plan session closes and is removed automatically.
 - A single `/tasks` screen provides server-rendered, cross-project task pagination and optional project and status filters; it defaults to open tasks, which can be completed and reopened from the list or detail page. `/tasks/new` creates tasks for any saved project. Per-project list and creation URLs redirect to these unified screens.
+- The `/plans` screen lists registered plans across projects with pagination and a project filter. Every completed planning session automatically registers its final task file through `POST /api/plans` before its agent exits.
 
 ## Agent Harness Configuration
 

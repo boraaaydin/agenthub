@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
-import { BrandLink } from "../../brand-link";
+import { BrandBar } from "../../brand-bar";
 
 type ApiError = { error?: string };
 
@@ -54,7 +54,7 @@ export default function NewProjectPage() {
     <main className="min-h-screen bg-[#f4f6fa] px-4 py-6 text-slate-900 sm:px-6 sm:py-10">
       <div className="mx-auto w-full max-w-2xl">
         <header className="border-b border-slate-200 pb-5">
-          <BrandLink />
+          <BrandBar />
           <div className="mt-3">
             <Link
               href="/projects"
