@@ -4,6 +4,7 @@ import {
   ProjectValidationError,
   updateProject,
 } from "@/lib/projects-store";
+import { deleteProjectTasks, TaskStoreError } from "@/lib/tasks-store";
 
 export const dynamic = "force-dynamic";
 
@@ -40,21 +41,27 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   context: RouteContext<"/api/projects/[id]">,
 ) {
   const { id } = await context.params;
+  const deleteTasks = new URL(request.url).searchParams.get("deleteTasks") === "true";
 
   try {
     const project = await deleteProject(id);
     if (!project) {
       return Response.json({ error: "Project not found." }, { status: 404 });
     }
+    if (deleteTasks) {
+      await deleteProjectTasks(id);
+    }
     return Response.json(project);
   } catch (error) {
     const message = error instanceof ProjectStoreError
       ? "Project data could not be updated. Check data/projects.json and try again."
-      : "Unable to delete the project. Try again.";
+      : error instanceof TaskStoreError
+        ? "Task data could not be updated. Check data/tasks.json and try again."
+        : "Unable to delete the project. Try again.";
     console.error("Unable to delete project", error);
     return Response.json({ error: message }, { status: 500 });
   }

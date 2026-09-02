@@ -49,8 +49,10 @@ Node server  ──  node-pty  ──  claude / codex CLI process
   scrollback instead of seeing an empty screen. It is in-memory only; a server restart ends
   active sessions.
 
-Project metadata is persisted separately in a git-ignored `data/projects.json` file. Global
-Task and Plan agent defaults are persisted in git-ignored `data/settings.json`; the code-defined
+Project metadata is persisted separately in a git-ignored `data/projects.json` file. Per-project
+tasks are persisted in git-ignored `data/tasks.json`, listed with server-side URL pagination, and
+can be retained or removed when their project is deleted. Global Task and Plan agent defaults are
+persisted in git-ignored `data/settings.json`; the code-defined
 agent catalog lives in `src/lib/agents.ts`. The console selects its agent per new session (Codex
 by default), while the settings remain available for future task and plan flows. These files
 survive server restarts; agent sessions remain in-memory only and end when the server restarts.
@@ -96,10 +98,12 @@ The same rule is carried in the tool-managed `<!-- BEGIN:nextjs-agent-rules -->`
 ```
 src/app/                         # Next.js application
 ├── api/projects/                 # Route Handlers for persisted project metadata
+│   └── [id]/tasks/               # Route Handlers for per-project tasks
 ├── api/settings/                 # Route Handler for global agent defaults
 ├── console/                      # Multi-session console route and colocated client components
 ├── projects/                     # Project creation and detail routes
-│   └── [id]/                     # Editable project detail route
+│   └── [id]/                     # Editable project detail and task-list routes
+│       └── tasks/                # Paginated task list, creation, and detail routes
 ├── settings/                     # Global Task and Plan agent settings
 ├── agent-console.tsx             # Client console UI
 └── page.tsx                      # Projects home page
@@ -110,7 +114,7 @@ src/lib/
 server/
 ├── agents.ts                     # Server-only CLI command definitions
 └── session-registry.ts           # In-memory concurrent PTY session registry
-data/                             # Runtime JSON database (git-ignored: projects.json, settings.json)
+data/                             # Runtime JSON database (git-ignored: projects.json, tasks.json, settings.json)
 .agent/
 ├── PROJECT_DOCUMENT.md          # this file
 ├── commands/tasks/              # plan, do-task, do-task-post, common-plan-doc
@@ -142,6 +146,8 @@ tasks in `.agent/tasks/` are archived by hand into
 - Agent selection (Codex or Claude Code) is available per new console session.
 - Multiple concurrent sessions can run, be selected from the console sidebar, and retain their
   individual in-memory scrollback until dismissed after exit.
+- Every project has a persisted task list with server-side URL pagination; project deletion can
+  explicitly remove its tasks or leave them in place.
 
 ## Agent Harness Configuration
 

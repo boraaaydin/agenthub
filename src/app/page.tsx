@@ -26,13 +26,22 @@ function ProjectList({ projects }: { projects: Project[] }) {
     <section aria-label="Saved projects" className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       <ul className="divide-y divide-slate-200">
         {projects.map((project) => (
-          <li key={project.id}>
+          <li key={project.id} className="group flex items-center transition hover:bg-slate-50">
             <Link
               href={`/projects/${project.id}`}
-              className="block px-4 py-4 transition hover:bg-slate-50 focus:outline-none focus:ring-3 focus:ring-inset focus:ring-sky-100 sm:px-5"
+              className="min-w-0 flex-1 px-4 py-4 focus:outline-none focus:ring-3 focus:ring-inset focus:ring-sky-100 sm:px-5"
             >
               <h2 className="font-medium text-slate-900">{project.name}</h2>
               <p className="mt-1 break-all font-mono text-sm leading-6 text-slate-600">{project.path}</p>
+            </Link>
+            <Link
+              href={`/projects/${project.id}/tasks`}
+              aria-label={`Tasks for ${project.name}`}
+              className="mr-3 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-600 transition hover:bg-slate-100 hover:text-sky-800 focus:outline-none focus:ring-3 focus:ring-sky-100 sm:mr-4"
+            >
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m5 7 1.5 1.5L9 6m3 1h7M5 12l1.5 1.5L9 11m3 1h7M5 17l1.5 1.5L9 16m3 1h7" />
+              </svg>
             </Link>
           </li>
         ))}

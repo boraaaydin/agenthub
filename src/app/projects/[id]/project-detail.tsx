@@ -13,7 +13,7 @@ type Project = {
 
 type ApiError = { error?: string };
 
-export default function ProjectDetail({ project }: { project: Project }) {
+export default function ProjectDetail({ project, taskCount }: { project: Project; taskCount: number }) {
   const router = useRouter();
   const [name, setName] = useState(project.name);
   const [projectPath, setProjectPath] = useState(project.path);
@@ -21,6 +21,7 @@ export default function ProjectDetail({ project }: { project: Project }) {
   const [status, setStatus] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleteConfirming, setIsDeleteConfirming] = useState(false);
+  const [deleteTasks, setDeleteTasks] = useState(false);
 
   function resetForm() {
     setName(project.name);
@@ -75,7 +76,10 @@ export default function ProjectDetail({ project }: { project: Project }) {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch(`/api/projects/${project.id}`, { method: "DELETE" });
+      const response = await fetch(
+        `/api/projects/${project.id}${deleteTasks ? "?deleteTasks=true" : ""}`,
+        { method: "DELETE" },
+      );
       const body = (await response.json()) as ApiError;
 
       if (!response.ok) {
@@ -105,12 +109,20 @@ export default function ProjectDetail({ project }: { project: Project }) {
             <h1 className="mt-4 break-words text-3xl font-semibold tracking-[-0.03em]">{project.name}</h1>
             <p className="mt-1 text-sm leading-6 text-slate-600">Update this project&apos;s local settings.</p>
           </div>
-          <Link
-            href="/console"
-            className="h-11 rounded-xl border border-slate-300 bg-white px-4 py-3 text-center text-sm font-medium leading-none text-slate-800 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-3 focus:ring-sky-100"
-          >
-            Open console
-          </Link>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href={`/projects/${project.id}/tasks`}
+              className="h-11 rounded-xl border border-slate-300 bg-white px-4 py-3 text-center text-sm font-medium leading-none text-slate-800 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-3 focus:ring-sky-100"
+            >
+              Tasks
+            </Link>
+            <Link
+              href="/console"
+              className="h-11 rounded-xl border border-slate-300 bg-white px-4 py-3 text-center text-sm font-medium leading-none text-slate-800 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-3 focus:ring-sky-100"
+            >
+              Open console
+            </Link>
+          </div>
         </header>
 
         <form onSubmit={saveProject} className="mt-8 space-y-6" noValidate>
@@ -195,23 +207,55 @@ export default function ProjectDetail({ project }: { project: Project }) {
           <h2 id="delete-project" className="text-sm font-semibold text-slate-900">Delete project</h2>
           <p className="mt-1 text-sm leading-6 text-slate-600">This only removes the saved project record. Your local files stay untouched.</p>
           {isDeleteConfirming ? (
-            <div className="mt-4 flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={deleteProject}
-                disabled={isSubmitting}
-                className="h-11 rounded-xl bg-red-700 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-red-800 focus:outline-none focus:ring-3 focus:ring-red-200 disabled:cursor-not-allowed disabled:bg-red-300"
-              >
-                {isSubmitting ? "Deleting project…" : "Confirm delete"}
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsDeleteConfirming(false)}
-                disabled={isSubmitting}
-                className="h-11 rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-800 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-3 focus:ring-sky-100 disabled:cursor-not-allowed disabled:bg-slate-100"
-              >
-                Cancel
-              </button>
+            <div className="mt-4">
+              {taskCount > 0 && (
+                <fieldset className="mb-4 space-y-3">
+                  <legend className="text-sm font-medium text-slate-800">This project has {taskCount} {taskCount === 1 ? "task" : "tasks"}.</legend>
+                  <label className="flex items-start gap-3 text-sm leading-6 text-slate-700">
+                    <input
+                      type="radio"
+                      name="delete-tasks"
+                      checked={deleteTasks}
+                      onChange={() => setDeleteTasks(true)}
+                      disabled={isSubmitting}
+                      className="mt-1 h-4 w-4 border-slate-300 text-red-700 focus:ring-red-200"
+                    />
+                    Delete the project and its {taskCount} {taskCount === 1 ? "task" : "tasks"}.
+                  </label>
+                  <label className="flex items-start gap-3 text-sm leading-6 text-slate-700">
+                    <input
+                      type="radio"
+                      name="delete-tasks"
+                      checked={!deleteTasks}
+                      onChange={() => setDeleteTasks(false)}
+                      disabled={isSubmitting}
+                      className="mt-1 h-4 w-4 border-slate-300 text-red-700 focus:ring-red-200"
+                    />
+                    Delete the project only and keep its tasks.
+                  </label>
+                </fieldset>
+              )}
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={deleteProject}
+                  disabled={isSubmitting}
+                  className="h-11 rounded-xl bg-red-700 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-red-800 focus:outline-none focus:ring-3 focus:ring-red-200 disabled:cursor-not-allowed disabled:bg-red-300"
+                >
+                  {isSubmitting ? "Deleting project…" : "Confirm delete"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsDeleteConfirming(false);
+                    setDeleteTasks(false);
+                  }}
+                  disabled={isSubmitting}
+                  className="h-11 rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-800 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-3 focus:ring-sky-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           ) : (
             <button
