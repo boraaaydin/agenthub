@@ -1,6 +1,7 @@
 export const AGENTS = [
   { id: "codex", label: "Codex" },
   { id: "claude", label: "Claude Code" },
+  { id: "pi", label: "Pi" },
 ] as const;
 
 export type Agent = (typeof AGENTS)[number];

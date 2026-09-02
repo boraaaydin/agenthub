@@ -5,7 +5,7 @@ Project-wide context for AI agents. Read this first, before any other file.
 ## Purpose
 
 **AgentHub** is a locally-run web application that acts as a single control panel for
-terminal-based AI coding agents (Claude Code, Codex, and similar CLIs).
+terminal-based AI coding agents (Claude Code, Codex, Pi, and similar CLIs).
 
 The user picks an agent from the web UI, sends it a prompt, and watches the agent's output
 stream back into the browser live — exactly as it would appear in a terminal. Sessions stay
@@ -15,7 +15,7 @@ It runs only on the developer's own machine; it is not intended to be deployed p
 
 ## Core Requirements
 
-1. **Agent selection** — choose which CLI agent a session runs (Claude Code, Codex, …).
+1. **Agent selection** — choose which CLI agent a session runs (Claude Code, Codex, Pi, …).
 2. **Live streaming** — agent output appears in the browser token-by-token, with no buffering.
 3. **Persistent sessions** — the agent process stays running; follow-up prompts go into the
    same session rather than starting a new one.
@@ -31,7 +31,7 @@ buffer their output, and may refuse interactive mode entirely.
 ```
 Browser (Next.js + xterm.js)
       ↕  WebSocket  (prompts down, output up)
-Node server  ──  node-pty  ──  claude / codex CLI process
+Node server  ──  node-pty  ──  claude / codex / pi CLI process
 ```
 
 - **node-pty** — spawns each agent CLI inside a pseudo-terminal so the process believes it is
@@ -169,7 +169,7 @@ tasks in `.agent/tasks/` are archived by hand into
 
 ## Delivered session capabilities
 
-- Agent selection (Codex or Claude Code) is available per new console session.
+- Agent selection (Codex, Claude Code, or Pi) is available per new console session.
 - Multiple concurrent sessions can run, be selected from the console sidebar, and retain their
   individual in-memory scrollback until dismissed after exit.
 - Every project has a persisted task list with server-side URL pagination; project deletion can

@@ -29,6 +29,12 @@ export function AgentLogo({ agent, className }: AgentLogoProps) {
           <circle cx="8" cy="8" r="2.1" fill="currentColor" />
         </svg>
       );
+    case "pi":
+      return (
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true" className={className}>
+          <path d="M3 4.5h10M5.5 4.5v7M10.5 4.5v7" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
   }
 
   const unsupportedAgent: never = agent;

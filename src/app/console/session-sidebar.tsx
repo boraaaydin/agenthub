@@ -1,11 +1,17 @@
 "use client";
 
 import { ProjectChip } from "../project-chip";
-import { getAgent } from "@/lib/agents";
+import { getAgent, type AgentId } from "@/lib/agents";
 import type { SessionSummary } from "@/lib/agent-protocol";
 import { AgentLogo } from "./agent-logo";
 
 type SidebarProject = { id: string; path: string; name: string; color?: string };
+
+const AGENT_ACCENT_CLASSES: Record<AgentId, string> = {
+  codex: "text-emerald-700",
+  claude: "text-orange-700",
+  pi: "text-violet-700",
+};
 
 function sessionProject(cwd: string, projects: SidebarProject[]) {
   return projects.find((candidate) => candidate.path === cwd);
@@ -58,7 +64,7 @@ export function SessionSidebar({
               const exited = session.state === "exited";
               const project = sessionProject(session.cwd, projects);
               const projectName = sessionLabel(session.cwd, project);
-              const agentAccentClass = session.agent === "claude" ? "text-orange-700" : "text-emerald-700";
+              const agentAccentClass = AGENT_ACCENT_CLASSES[session.agent];
 
               return (
                 <li key={session.id} className="flex items-stretch gap-1">
