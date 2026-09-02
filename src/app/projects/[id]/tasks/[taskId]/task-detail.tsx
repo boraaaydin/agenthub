@@ -103,13 +103,8 @@ export default function TaskDetail({ projectName, projectColor, task }: TaskDeta
         return;
       }
 
-      const updatedTask = body as Task;
-      setTitle(updatedTask.title);
-      setDetail(updatedTask.detail);
-      setTaskStatus(updatedTask.status);
-      setCompletedAt(updatedTask.completedAt);
-      setStatusMessage("Changes saved.");
       router.refresh();
+      router.replace(taskListPath);
     } catch {
       setError("Unable to reach the server. Check your connection and try again.");
     } finally {
