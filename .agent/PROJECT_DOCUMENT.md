@@ -110,9 +110,11 @@ src/app/                         # Next.js application
 │   └── [id]/tasks/               # Route Handlers for per-project tasks, including plan-prompt
 ├── api/settings/                 # Route Handler for global agent defaults
 ├── api/plans/                    # Route Handlers for plan registrations and detail CRUD
-│   └── [planId]/                 # Single-plan read, update, and delete handler
+│   └── [planId]/
+│       └── task-prompt/route.ts  # Composes a registered plan's task-execution prompt
 ├── console/                      # Multi-session console route and colocated client components
-│   └── use-plan-run.ts           # Starts a plan session from task URL parameters
+│   ├── use-plan-run.ts           # Starts a plan session from task URL parameters
+│   └── use-task-run.ts           # Starts a task-execution session from a plan URL parameter
 ├── projects/                     # Projects list, creation, and detail routes
 │   ├── page.tsx                  # Projects list page
 │   ├── project-color-picker.tsx  # Shared project color picker and chip preview
@@ -176,6 +178,9 @@ tasks in `.agent/tasks/` are archived by hand into
   and effective planning/after-planning prompts, with the composed multi-line first prompt passed
   to the agent CLI as a startup argument. Follow-up prompts are pasted into the running session.
   When its agent exits, the plan session closes and is removed automatically.
+- Plans can be executed from the plan list with the configured Task agent and effective task
+  execution/after-task prompts. Execution sessions remain available with their scrollback after
+  the agent exits.
 - A single `/tasks` screen provides server-rendered, cross-project task pagination and optional project and status filters; it defaults to open tasks, which can be completed and reopened from the list or detail page. `/tasks/new` creates tasks for any saved project. Per-project list and creation URLs redirect to these unified screens.
 - The `/plans` screen lists registered plans across projects with pagination and a project filter. Plans can be registered by hand, viewed and edited on a detail page, and deleted with optional removal of the plan file from disk. Every completed planning session automatically registers its final task file through `POST /api/plans` before its agent exits.
 - Projects are color-coded across project, task, and plan screens, with a palette color chosen on project create and detail forms.

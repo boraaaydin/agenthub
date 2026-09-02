@@ -13,6 +13,7 @@ import { SessionSidebar } from "./session-sidebar";
 import { SessionTerminal } from "./session-terminal";
 import { useAgentSocket } from "./use-agent-socket";
 import { usePlanRun } from "./use-plan-run";
+import { useTaskRun } from "./use-task-run";
 
 type ConsoleProject = {
   id: string;
@@ -49,6 +50,7 @@ export function AgentConsole() {
   const initialProjectIdRef = useRef(searchParams.get("projectId"));
   const initialPlanProjectIdRef = useRef(searchParams.get("planProjectId"));
   const initialPlanTaskIdRef = useRef(searchParams.get("planTaskId"));
+  const initialTaskPlanIdRef = useRef(searchParams.get("taskPlanId"));
   const sendRef = useRef<(message: ClientMessage) => boolean>(sendPlaceholder);
 
   const onSessions = useCallback((nextSessions: SessionSummary[]) => {
@@ -279,6 +281,18 @@ export function AgentConsole() {
   usePlanRun({
     planProjectIdRef: initialPlanProjectIdRef,
     planTaskIdRef: initialPlanTaskIdRef,
+    connected,
+    isLoadingProjects,
+    terminalReady,
+    projects,
+    setAgent,
+    setSelectedProjectId,
+    setError,
+    startSession,
+  });
+
+  useTaskRun({
+    planIdRef: initialTaskPlanIdRef,
     connected,
     isLoadingProjects,
     terminalReady,

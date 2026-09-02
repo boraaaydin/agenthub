@@ -6,6 +6,7 @@ import { ProjectFilter } from "./project-filter";
 import { listProjects, ProjectStoreError } from "@/lib/projects-store";
 import { newPlanHref, planDetailHref, plansHref } from "@/lib/plan-filters";
 import { listAllPlans, PlanStoreError, PLANS_PAGE_SIZE, type Plan } from "@/lib/plans-store";
+import { taskConsoleHref } from "@/lib/task-run";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +49,16 @@ function PlanRows({ plans, projectNames }: { plans: Plan[]; projectNames: Map<st
                   <span className="text-slate-500">Task #{plan.taskId}</span>
                 )}
                 <span className="break-all font-mono text-slate-600">{plan.filePath}</span>
+                {project ? (
+                  <Link
+                    href={taskConsoleHref(plan.id)}
+                    className="font-medium text-sky-700 transition hover:text-sky-900 focus:outline-none focus:ring-3 focus:ring-sky-100"
+                  >
+                    Execute task
+                  </Link>
+                ) : (
+                  <span aria-disabled="true" className="text-slate-400">Execute task</span>
+                )}
               </div>
             </li>
           );
