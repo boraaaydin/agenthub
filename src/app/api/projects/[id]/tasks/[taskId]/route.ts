@@ -12,6 +12,11 @@ export async function PATCH(
   context: RouteContext<"/api/projects/[id]/tasks/[taskId]">,
 ) {
   const { id, taskId } = await context.params;
+  const parsedTaskId = Number.parseInt(taskId, 10);
+  if (!Number.isInteger(parsedTaskId) || parsedTaskId <= 0 || String(parsedTaskId) !== taskId) {
+    return Response.json({ error: "Task not found." }, { status: 404 });
+  }
+
   let input: unknown;
 
   try {
@@ -21,7 +26,7 @@ export async function PATCH(
   }
 
   try {
-    const task = await updateTask(id, taskId, input);
+    const task = await updateTask(id, parsedTaskId, input);
     if (!task) {
       return Response.json({ error: "Task not found." }, { status: 404 });
     }
@@ -44,9 +49,13 @@ export async function DELETE(
   context: RouteContext<"/api/projects/[id]/tasks/[taskId]">,
 ) {
   const { id, taskId } = await context.params;
+  const parsedTaskId = Number.parseInt(taskId, 10);
+  if (!Number.isInteger(parsedTaskId) || parsedTaskId <= 0 || String(parsedTaskId) !== taskId) {
+    return Response.json({ error: "Task not found." }, { status: 404 });
+  }
 
   try {
-    const task = await deleteTask(id, taskId);
+    const task = await deleteTask(id, parsedTaskId);
     if (!task) {
       return Response.json({ error: "Task not found." }, { status: 404 });
     }

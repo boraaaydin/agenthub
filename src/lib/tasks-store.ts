@@ -1,11 +1,10 @@
 import "server-only";
 
-import { randomUUID } from "node:crypto";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 
 export type Task = {
-  id: string;
+  id: number;
   projectId: string;
   title: string;
   detail: string;
@@ -46,7 +45,9 @@ function isTask(value: unknown): value is Task {
 
   const task = value as Record<string, unknown>;
   return (
-    typeof task.id === "string" &&
+    typeof task.id === "number" &&
+    Number.isInteger(task.id) &&
+    task.id > 0 &&
     typeof task.projectId === "string" &&
     typeof task.title === "string" &&
     typeof task.detail === "string" &&
@@ -148,7 +149,7 @@ export async function listProjectTasks(
   };
 }
 
-export async function getTask(projectId: string, taskId: string): Promise<Task | null> {
+export async function getTask(projectId: string, taskId: number): Promise<Task | null> {
   const { tasks } = await readDocument();
   return tasks.find((task) => task.projectId === projectId && task.id === taskId) ?? null;
 }
@@ -159,8 +160,10 @@ export async function createTask(projectId: string, input: unknown): Promise<Tas
   return serializeWrite(async () => {
     const document = await readDocument();
     const now = new Date().toISOString();
+    const nextId = document.tasks
+      .reduce((highest, task) => Math.max(highest, task.id), 0) + 1;
     const task: Task = {
-      id: randomUUID(),
+      id: nextId,
       projectId,
       title: details.title,
       detail: details.detail,
@@ -174,7 +177,7 @@ export async function createTask(projectId: string, input: unknown): Promise<Tas
   });
 }
 
-export async function updateTask(projectId: string, taskId: string, input: unknown): Promise<Task | null> {
+export async function updateTask(projectId: string, taskId: number, input: unknown): Promise<Task | null> {
   const details = taskDetails(input);
 
   return serializeWrite(async () => {
@@ -192,7 +195,7 @@ export async function updateTask(projectId: string, taskId: string, input: unkno
   });
 }
 
-export async function deleteTask(projectId: string, taskId: string): Promise<Task | null> {
+export async function deleteTask(projectId: string, taskId: number): Promise<Task | null> {
   return serializeWrite(async () => {
     const document = await readDocument();
     const index = document.tasks.findIndex((task) => task.projectId === projectId && task.id === taskId);

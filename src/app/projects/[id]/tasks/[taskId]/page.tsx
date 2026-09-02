@@ -9,6 +9,10 @@ export const dynamic = "force-dynamic";
 
 export default async function TaskDetailPage(props: PageProps<"/projects/[id]/tasks/[taskId]">) {
   const { id, taskId } = await props.params;
+  const parsedTaskId = Number.parseInt(taskId, 10);
+  if (!Number.isInteger(parsedTaskId) || parsedTaskId <= 0 || String(parsedTaskId) !== taskId) {
+    notFound();
+  }
 
   let project;
   let task;
@@ -17,7 +21,7 @@ export default async function TaskDetailPage(props: PageProps<"/projects/[id]/ta
   try {
     project = await getProject(id);
     if (project) {
-      task = await getTask(id, taskId);
+      task = await getTask(id, parsedTaskId);
     }
   } catch (caughtError) {
     console.error("Unable to render project task", caughtError);

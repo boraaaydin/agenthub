@@ -35,7 +35,10 @@ function TaskRows({ projectId, tasks }: { projectId: string; tasks: Task[] }) {
               className="block px-4 py-4 transition hover:bg-slate-50 focus:outline-none focus:ring-3 focus:ring-inset focus:ring-sky-100 sm:px-5"
             >
               <div className="flex flex-col gap-2 sm:flex-row sm:items-baseline sm:justify-between sm:gap-5">
-                <h2 className="min-w-0 break-words font-medium text-slate-900">{task.title}</h2>
+                <div className="flex min-w-0 items-baseline gap-2">
+                  <span className="shrink-0 text-sm font-medium tabular-nums text-slate-500">#{task.id}</span>
+                  <h2 className="min-w-0 break-words font-medium text-slate-900">{task.title}</h2>
+                </div>
                 <time className="shrink-0 text-sm text-slate-500" dateTime={task.createdAt}>
                   {taskDate(task.createdAt)}
                 </time>

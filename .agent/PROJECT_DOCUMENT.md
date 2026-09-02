@@ -50,8 +50,9 @@ Node server  ──  node-pty  ──  claude / codex CLI process
   active sessions.
 
 Project metadata is persisted separately in a git-ignored `data/projects.json` file. Per-project
-tasks are persisted in git-ignored `data/tasks.json`, listed with server-side URL pagination, and
-can be retained or removed when their project is deleted. Global Task and Plan agent defaults are
+tasks are persisted in git-ignored `data/tasks.json`, carry globally sequential integer ids
+starting at `1`, are listed with server-side URL pagination, and can be retained or removed when
+their project is deleted. Global Task and Plan agent defaults are
 persisted in git-ignored `data/settings.json`; the code-defined
 agent catalog lives in `src/lib/agents.ts`. The console selects a saved project and its agent per new session (Codex
 by default), while the settings remain available for future task and plan flows. These files

@@ -7,7 +7,7 @@ import { type FormEvent, useState } from "react";
 import { BrandLink } from "../../../../brand-link";
 
 type Task = {
-  id: string;
+  id: number;
   projectId: string;
   title: string;
   detail: string;
@@ -103,13 +103,14 @@ export default function TaskDetail({ projectName, task }: TaskDetailProps) {
       <div className="mx-auto w-full max-w-2xl">
         <header className="border-b border-slate-200 pb-5">
           <BrandLink />
-          <div className="mt-3">
+          <div className="mt-3 flex flex-wrap items-center gap-2">
             <Link
               href={taskListPath}
               className="text-sm font-medium text-sky-700 transition hover:text-sky-900 focus:outline-none focus:ring-3 focus:ring-sky-100"
             >
               {projectName} tasks
             </Link>
+            <span className="text-sm text-slate-500">Task #{task.id}</span>
           </div>
           <h1 className="mt-4 break-words text-3xl font-semibold tracking-[-0.03em]">{task.title}</h1>
           <p className="mt-1 text-sm leading-6 text-slate-600">Update this task&apos;s title and detail.</p>
