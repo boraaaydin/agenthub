@@ -43,6 +43,7 @@ type PaginationInput = {
   pageSize: number;
   projectId?: string;
   statuses?: readonly PlanStatus[];
+  excludedTaskKeys?: ReadonlySet<string>;
 };
 
 export type PaginatedPlans = {
@@ -340,7 +341,7 @@ export async function listLatestPlansByTask(): Promise<LatestPlansByTask> {
   return latestPlansByTask;
 }
 
-export async function listAllPlans({ page, pageSize, projectId, statuses }: PaginationInput): Promise<PaginatedPlans> {
+export async function listAllPlans({ page, pageSize, projectId, statuses, excludedTaskKeys }: PaginationInput): Promise<PaginatedPlans> {
   const { plans } = await readDocument();
   const normalizedPage = normalizePage(page);
   const normalizedPageSize = normalizePageSize(pageSize);
@@ -348,6 +349,7 @@ export async function listAllPlans({ page, pageSize, projectId, statuses }: Pagi
     .map(normalizePlan)
     .filter((plan) => projectId === undefined || plan.projectId === projectId)
     .filter((plan) => statuses === undefined || statuses.includes(plan.status))
+    .filter((plan) => !excludedTaskKeys?.has(planTaskKey(plan.projectId, plan.taskId)))
     .sort((first, second) => second.createdAt.localeCompare(first.createdAt));
   const total = filteredPlans.length;
 

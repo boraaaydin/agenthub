@@ -2,11 +2,13 @@ import { getProject, ProjectStoreError } from "@/lib/projects-store";
 import {
   createPlan,
   listAllPlans,
+  planTaskKey,
   PlanStoreError,
   PlanValidationError,
   PLANS_PAGE_SIZE,
 } from "@/lib/plans-store";
-import { getTask, TaskStoreError, updateTask } from "@/lib/tasks-store";
+import { TERMINAL_TASK_STATUSES } from "@/lib/task-filters";
+import { getTask, listTasksByStatuses, TaskStoreError, updateTask } from "@/lib/tasks-store";
 
 export const dynamic = "force-dynamic";
 
@@ -20,19 +22,28 @@ function projectFromRequest(request: Request): string | undefined {
   return new URL(request.url).searchParams.get("project")?.trim() || undefined;
 }
 
+function includesAllTasks(request: Request): boolean {
+  return new URL(request.url).searchParams.get("all") === "true";
+}
+
 export async function GET(request: Request) {
   try {
+    const excludedTaskKeys = includesAllTasks(request)
+      ? undefined
+      : new Set((await listTasksByStatuses(TERMINAL_TASK_STATUSES)).map((task) => planTaskKey(task.projectId, task.id)));
+
     return Response.json(await listAllPlans({
       page: pageFromRequest(request),
       pageSize: PLANS_PAGE_SIZE,
       projectId: projectFromRequest(request),
+      excludedTaskKeys,
     }));
   } catch (error) {
     console.error("Unable to list plans", error);
-    return Response.json(
-      { error: "Plan data could not be read. Check data/plans.json and try again." },
-      { status: 500 },
-    );
+    const message = error instanceof TaskStoreError
+      ? "Task data could not be read. Check data/tasks.json and try again."
+      : "Plan data could not be read. Check data/plans.json and try again.";
+    return Response.json({ error: message }, { status: 500 });
   }
 }
 

@@ -15,7 +15,9 @@ import {
   PLAN_STATUS_LABELS,
   plansHref,
 } from "@/lib/plan-filters";
-import { listAllPlans, PlanStoreError, PLANS_PAGE_SIZE, type Plan } from "@/lib/plans-store";
+import { listAllPlans, planTaskKey, PlanStoreError, PLANS_PAGE_SIZE, type Plan } from "@/lib/plans-store";
+import { TERMINAL_TASK_STATUSES } from "@/lib/task-filters";
+import { listTasksByStatuses, TaskStoreError } from "@/lib/tasks-store";
 import { taskConsoleHref } from "@/lib/task-run";
 
 export const dynamic = "force-dynamic";
@@ -103,6 +105,9 @@ export default async function PlansPage(props: PageProps<"/plans">) {
     projects = savedProjects.map(({ id, name, color }) => ({ id, name, color }));
     projectNames = new Map(projects.map((project) => [project.id, { name: project.name, color: project.color }]));
     selectedProjectId = projects.some((project) => project.id === requestedProjectId) ? requestedProjectId ?? "" : "";
+    const excludedTaskKeys = selectedStatus === "all"
+      ? undefined
+      : new Set((await listTasksByStatuses(TERMINAL_TASK_STATUSES)).map((task) => planTaskKey(task.projectId, task.id)));
     planPage = await listAllPlans({
       page,
       pageSize: PLANS_PAGE_SIZE,
@@ -112,15 +117,18 @@ export default async function PlansPage(props: PageProps<"/plans">) {
         : selectedStatus === "active"
           ? ACTIVE_PLAN_STATUSES
           : [selectedStatus],
+      excludedTaskKeys,
     });
     hasAnyPlans = (await listAllPlans({ page: 1, pageSize: 1 })).total > 0;
   } catch (caughtError) {
     console.error("Unable to render plans", caughtError);
     error = caughtError instanceof ProjectStoreError
       ? "Project data could not be read. Check data/projects.json and reload this page."
-      : caughtError instanceof PlanStoreError
-        ? "Plan data could not be read. Check data/plans.json and reload this page."
-        : "Plans could not be loaded. Reload this page and try again.";
+      : caughtError instanceof TaskStoreError
+        ? "Task data could not be read. Check data/tasks.json and reload this page."
+        : caughtError instanceof PlanStoreError
+          ? "Plan data could not be read. Check data/plans.json and reload this page."
+          : "Plans could not be loaded. Reload this page and try again.";
   }
 
   const emptyPlanLabel = selectedStatus === "all"

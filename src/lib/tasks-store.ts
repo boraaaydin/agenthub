@@ -227,6 +227,11 @@ export async function listAllTasks(
   return paginateTasks(tasks.map(normalizeTask), { page, pageSize, projectId, status });
 }
 
+export async function listTasksByStatuses(statuses: readonly TaskStatus[]): Promise<Task[]> {
+  const { tasks } = await readDocument();
+  return tasks.map(normalizeTask).filter((task) => statuses.includes(task.status));
+}
+
 export async function getTask(projectId: string, taskId: number): Promise<Task | null> {
   const { tasks } = await readDocument();
   const task = tasks.find((candidate) => candidate.projectId === projectId && candidate.id === taskId);

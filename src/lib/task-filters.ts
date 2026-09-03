@@ -4,6 +4,7 @@ export type TaskStatus = (typeof TASK_STATUSES)[number];
 export type TaskFilterStatus = TaskStatus | "all";
 
 export const DEFAULT_TASK_STATUS: TaskStatus = "open";
+export const TERMINAL_TASK_STATUSES = ["completed", "cancelled"] as const;
 
 export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
   open: "Open",
