@@ -39,12 +39,13 @@ export function usePlanCreation({ setError }: UsePlanCreationOptions) {
 
   useEffect(() => {
     mountedRef.current = true;
+    const controllers = controllersRef.current;
     return () => {
       mountedRef.current = false;
-      for (const controller of controllersRef.current) {
+      for (const controller of controllers) {
         controller.abort();
       }
-      controllersRef.current.clear();
+      controllers.clear();
     };
   }, []);
 

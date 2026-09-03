@@ -15,6 +15,7 @@ import { SessionInfo } from "./session-info";
 import { SessionSidebar } from "./session-sidebar";
 import { SessionTerminal } from "./session-terminal";
 import { useAgentSocket } from "./use-agent-socket";
+import { usePlanCreation } from "./use-plan-creation";
 import { usePlanExecution } from "./use-plan-execution";
 import { usePlanRun } from "./use-plan-run";
 import { useTaskRun } from "./use-task-run";
@@ -69,8 +70,10 @@ export function AgentConsole() {
     completePlanAndTask,
     isCompleting,
   } = usePlanExecution({ setError });
+  const { handlePlanningSessionExit, trackPlanningSession, trackPlanningSessions } = usePlanCreation({ setError });
 
   const onSessions = useCallback((nextSessions: SessionSummary[]) => {
+    trackPlanningSessions(nextSessions);
     if (!selectionInitializedRef.current) {
       selectionInitializedRef.current = true;
       if (nextSessions[0]) {
@@ -98,7 +101,7 @@ export function AgentConsole() {
       setNewSession(true);
       setIsPromptVisible(true);
     }
-  }, []);
+  }, [trackPlanningSessions]);
 
   const onOutput = useCallback((sessionId: string, data: string) => {
     if (activeSessionRef.current === sessionId && attachedSessionRef.current === sessionId) {
@@ -116,6 +119,7 @@ export function AgentConsole() {
   }, []);
 
   const onStarted = useCallback((session: SessionSummary) => {
+    trackPlanningSession(session);
     claimSession(session.id);
     pendingSessionIdRef.current = session.id;
     activeSessionRef.current = session.id;
@@ -123,14 +127,15 @@ export function AgentConsole() {
     setNewSession(false);
     setSelectedSessionId(session.id);
     setIsPromptVisible(false);
-  }, [claimSession]);
+  }, [claimSession, trackPlanningSession]);
 
   const onExit = useCallback((sessionId: string, code: number) => {
+    handlePlanningSessionExit(sessionId);
     handleSessionExit(sessionId);
     if (activeSessionRef.current === sessionId && attachedSessionRef.current === sessionId) {
       terminalRef.current?.write(`\r\n\x1b[33mSession exited with code ${code}.\x1b[0m\r\n`);
     }
-  }, [handleSessionExit]);
+  }, [handlePlanningSessionExit, handleSessionExit]);
 
   const onError = useCallback((message: string) => {
     setIsCreating(false);

@@ -301,6 +301,11 @@ export async function updateTask(projectId: string, taskId: number, input: unkno
     task.updatedAt = now;
     await writeDocument(document);
     const updatedTask = normalizeTask(task);
+    publishTaskChange({
+      projectId: updatedTask.projectId,
+      taskId: updatedTask.id,
+      status: updatedTask.status,
+    });
     if (statusChanged) {
       await appendLifecycleEvent({
         entityType: "task",
@@ -311,11 +316,6 @@ export async function updateTask(projectId: string, taskId: number, input: unkno
         createdAt: now,
       });
     }
-    publishTaskChange({
-      projectId: updatedTask.projectId,
-      taskId: updatedTask.id,
-      status: updatedTask.status,
-    });
     return updatedTask;
   });
 }

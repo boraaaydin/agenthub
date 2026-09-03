@@ -42,6 +42,15 @@ type UsePlanRunOptions = {
   ) => boolean;
 };
 
+async function readApiError(response: Response): Promise<string> {
+  try {
+    const body = await response.json() as ApiError;
+    return body.error ?? "Try again.";
+  } catch {
+    return "Try again.";
+  }
+}
+
 function isPlanPromptResponse(value: unknown): value is PlanPromptResponse {
   if (!value || typeof value !== "object") {
     return false;
@@ -129,6 +138,28 @@ export function usePlanRun({
         )) {
           throw new Error("The terminal connection is not ready. Try again in a moment.");
         }
+
+        try {
+          const statusResponse = await fetch(
+            `/api/projects/${encodeURIComponent(body.projectId)}/tasks/${body.taskId}`,
+            {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ status: "plan_creating" }),
+              signal: controller.signal,
+            },
+          );
+          if (!statusResponse.ok) {
+            throw new Error(await readApiError(statusResponse));
+          }
+        } catch (error) {
+          if (!controller.signal.aborted) {
+            setError(
+              `Unable to set task #${body.taskId} to Plan creating: ${error instanceof Error ? error.message : "Try again."}`,
+            );
+          }
+        }
+
         router.replace("/console");
       } catch (error) {
         if (!controller.signal.aborted) {

@@ -4,6 +4,7 @@ import { BrandBar } from "../brand-bar";
 import { ProjectChip, UnknownProjectChip } from "../project-chip";
 import { ProjectFilter } from "./project-filter";
 import { StatusFilter } from "./status-filter";
+import { TaskLiveUpdates } from "./task-live-updates";
 import { TaskStatusButton } from "./task-status-button";
 import { listProjects, ProjectStoreError } from "@/lib/projects-store";
 import {
@@ -186,6 +187,7 @@ export default async function TasksPage(props: PageProps<"/tasks">) {
 
   return (
     <main className="min-h-screen bg-[#f4f6fa] px-4 py-6 text-slate-900 sm:px-6 sm:py-10">
+      <TaskLiveUpdates />
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
         <header className="flex flex-col gap-4 border-b border-slate-200 pb-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
