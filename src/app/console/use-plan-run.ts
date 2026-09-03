@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, type RefObject } from "react";
 
 import { isAgentId, type AgentId } from "@/lib/agents";
+import type { SessionContext } from "@/lib/agent-protocol";
 
 type ConsoleProject = {
   id: string;
@@ -32,7 +33,13 @@ type UsePlanRunOptions = {
   setAgent: (agent: AgentId) => void;
   setSelectedProjectId: (projectId: string) => void;
   setError: (message: string) => void;
-  startSession: (agent: AgentId, project: ConsoleProject, prompt: string, autoClose?: boolean) => boolean;
+  startSession: (
+    agent: AgentId,
+    project: ConsoleProject,
+    prompt: string,
+    autoClose?: boolean,
+    context?: SessionContext,
+  ) => boolean;
 };
 
 function isPlanPromptResponse(value: unknown): value is PlanPromptResponse {
@@ -113,7 +120,13 @@ export function usePlanRun({
 
         setSelectedProjectId(project.id);
         setAgent(body.agent);
-        if (!startSession(body.agent, project, body.prompt, true)) {
+        if (!startSession(
+          body.agent,
+          project,
+          body.prompt,
+          true,
+          { projectId: body.projectId, taskId: body.taskId },
+        )) {
           throw new Error("The terminal connection is not ready. Try again in a moment.");
         }
         router.replace("/console");

@@ -7,9 +7,11 @@ import type { Terminal } from "@xterm/xterm";
 
 import { BrandBar } from "../brand-bar";
 import { AGENTS, DEFAULT_AGENT_ID, getAgent, type AgentId } from "@/lib/agents";
-import type { ClientMessage, SessionSummary } from "@/lib/agent-protocol";
+import type { ClientMessage, SessionContext, SessionSummary } from "@/lib/agent-protocol";
 import { terminalSubmission } from "@/lib/terminal-input";
 import { PlanClosePrompt } from "./plan-close-prompt";
+import { PlanCompletionAction } from "./plan-completion-action";
+import { SessionInfo } from "./session-info";
 import { SessionSidebar } from "./session-sidebar";
 import { SessionTerminal } from "./session-terminal";
 import { useAgentSocket } from "./use-agent-socket";
@@ -64,6 +66,8 @@ export function AgentConsole() {
     dismissPrompt,
     execution,
     handleSessionExit,
+    completePlanAndTask,
+    isCompleting,
   } = usePlanExecution({ setError });
 
   const onSessions = useCallback((nextSessions: SessionSummary[]) => {
@@ -227,7 +231,13 @@ export function AgentConsole() {
     }
   }, [isPromptVisible]);
 
-  const startSession = useCallback((nextAgent: AgentId, project: ConsoleProject, nextPrompt: string, autoClose = false) => {
+  const startSession = useCallback((
+    nextAgent: AgentId,
+    project: ConsoleProject,
+    nextPrompt: string,
+    autoClose = false,
+    context?: SessionContext,
+  ) => {
     activeSessionRef.current = null;
     attachedSessionRef.current = null;
     terminalRef.current?.clear();
@@ -243,6 +253,7 @@ export function AgentConsole() {
       rows: terminalRef.current?.rows ?? 24,
       autoClose,
       initialPrompt: nextPrompt,
+      ...(context ? { execution: context } : {}),
     })) {
       setError("The terminal connection is not ready. Try again in a moment.");
       return false;
@@ -277,9 +288,12 @@ export function AgentConsole() {
     return send({ type: "dismiss", sessionId });
   }
 
-  function dismissExitedExecution(sessionId: string) {
+  const closeCompletedSession = useCallback((sessionId: string, isRunning: boolean) => {
+    if (isRunning && !send({ type: "stop", sessionId })) {
+      return false;
+    }
     return send({ type: "dismiss", sessionId });
-  }
+  }, [send]);
 
   function stopSession() {
     if (!activeSession) {
@@ -288,6 +302,25 @@ export function AgentConsole() {
     setError("");
     send({ type: "stop", sessionId: activeSession.id });
   }
+
+  const completeActivePlan = useCallback(() => {
+    const context = activeSession?.execution;
+    if (!activeSession || !context?.planId) {
+      return;
+    }
+
+    setError("");
+    void completePlanAndTask(
+      {
+        planId: context.planId,
+        projectId: context.projectId,
+        taskId: context.taskId,
+        sessionId: activeSession.id,
+        isRunning: activeSession.state === "running",
+      },
+      closeCompletedSession,
+    );
+  }, [activeSession, closeCompletedSession, completePlanAndTask]);
 
   function togglePromptVisibility() {
     if (!isPromptVisible) {
@@ -421,9 +454,9 @@ export function AgentConsole() {
               </section>
             ) : (
               <section className="flex flex-wrap items-center justify-between gap-3" aria-label={`${activeAgent?.label} session controls`}>
-                <div>
+                <div className="min-w-0">
                   <h2 className="text-lg font-semibold text-slate-900">{activeProject?.name ?? activeAgent?.label}</h2>
-                  <p className="mt-1 font-mono text-sm text-slate-600">{activeSession.cwd}</p>
+                  <SessionInfo session={activeSession} />
                 </div>
                 {activeSession.state === "running" && (
                   <button type="button" onClick={stopSession} className="h-10 rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-800 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-3 focus:ring-sky-100">
@@ -439,9 +472,9 @@ export function AgentConsole() {
               <PlanClosePrompt
                 planId={execution.planId}
                 taskId={execution.taskId}
-                isClosing={execution.isClosing}
+                isClosing={execution.isClosing || isCompleting}
                 isCompleted={execution.prompt === "success"}
-                onConfirm={() => { void confirmClose(dismissExitedExecution); }}
+                onConfirm={() => { void confirmClose(closeCompletedSession); }}
                 onDismiss={dismissPrompt}
               />
             )}
@@ -461,15 +494,20 @@ export function AgentConsole() {
                 />
               </div>
 
-              <button
-                type="button"
-                aria-expanded={isPromptVisible}
-                aria-controls="prompt-form"
-                onClick={togglePromptVisibility}
-                className="h-10 rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-800 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-3 focus:ring-sky-100"
-              >
-                {isPromptVisible ? "Hide prompt" : "Show prompt"}
-              </button>
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  aria-expanded={isPromptVisible}
+                  aria-controls="prompt-form"
+                  onClick={togglePromptVisibility}
+                  className="h-10 rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-800 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-3 focus:ring-sky-100"
+                >
+                  {isPromptVisible ? "Hide prompt" : "Show prompt"}
+                </button>
+                {activeSession?.execution?.planId && (
+                  <PlanCompletionAction isCompleting={isCompleting} onComplete={completeActivePlan} />
+                )}
+              </div>
 
               <div id="prompt-form">
                 {isPromptVisible && (

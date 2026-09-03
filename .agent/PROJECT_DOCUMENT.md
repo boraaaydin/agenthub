@@ -57,8 +57,10 @@ project is deleted. Plan registrations are stored in git-ignored `data/plans.jso
 projectId, taskId, title, filePath, summary, createdAt, and updatedAt; they can be created,
 edited (including project/task relinking), or deleted. The `/plans` list defaults to active plans and supports project and status filters. Registering a plan automatically moves its `open` or `in_progress` task to `plan_created`; tasks already `plan_created`, `completed`, or `cancelled` are left unchanged. A plan's Markdown file is read from
 `{project.path}/{plan.filePath}` for display only and is removed only when explicitly requested;
-the composed planning prompt ends by registering the finished task file through `POST /api/plans`.
-Global Task and Plan agent defaults plus the four global task-flow prompts are
+the composed planning prompt directs the agent to register the finished task file through `POST /api/plans`, then print a final plan and task summary line before exiting.
+Session context records a project and task for planning sessions and additionally a plan for
+execution sessions; it is retained with each in-memory session summary so the console can restore
+contextual controls after a reload. Global Task and Plan agent defaults plus the four global task-flow prompts are
 persisted in git-ignored `data/settings.json`. When a prompt has no saved value, settings displays
 the matching built-in prompt from `src/lib/default-prompts/` in muted text; these defaults are read
 by the server-only `src/lib/default-settings-prompts.ts` module. Built-in and saved prompts may use
@@ -173,7 +175,7 @@ tasks in `.agent/tasks/` are archived by hand into
 
 ## Delivered session capabilities
 
-- Agent selection (Codex, Claude Code, or Pi) is available per new console session. The prompt form appears below the terminal card and is hidden by default when a session is selected; it opens by default when starting a new session.
+- Agent selection (Codex, Claude Code, or Pi) is available per new console session. The prompt form appears below the terminal card and is hidden by default when a session is selected; it opens by default when starting a new session. Contextual sessions show their task or plan title beneath the project name, and the project path is available through an accessible session-information control.
 - Multiple concurrent sessions can run, be selected from the console sidebar, and retain their
   individual in-memory scrollback until dismissed after exit.
 - Every project has a persisted task list with server-side URL pagination; project deletion can
@@ -187,7 +189,12 @@ tasks in `.agent/tasks/` are archived by hand into
   **Execute plan** action starts the configured Task agent with effective task
   execution/after-task prompts and advances the plan to `executing`. Execution sessions remain
   available with their scrollback after the agent exits; the console marks the plan `executed`
-  and offers to complete the plan and its task. Execution sessions carry their plan, project, and task identifiers in the in-memory server session registry, so the console derives that close-out offer after reloads and in other browser tabs; a server restart removes this information together with the sessions.
+  and offers to complete the plan and its task. The console also provides a **Complete task and
+  plan** action during any selected execution session, which completes both records, stops a
+  running session, and removes it from the session list. Planning sessions carry project/task
+  context and execution sessions additionally carry their plan identifier in the in-memory server
+  session registry, so contextual information and execution controls survive reloads and other
+  browser tabs; a server restart removes this information together with the sessions.
 - A single `/tasks` screen provides a server-rendered, cross-project task table with pagination and optional project and status filters; it defaults to open tasks, which can be completed and reopened from the list or detail page. Its Plan column links to the latest registered plan for each task and indicates any additional plans. Plan registration moves open and in-progress tasks to Plan created, while already planned, completed, and cancelled tasks remain unchanged. `/tasks/new` creates tasks for any saved project. Per-project list and creation URLs redirect to these unified screens.
 - The `/plans` screen lists active plans across projects by default, with pagination plus project and status filters. Plans can be registered by hand, viewed and edited on a detail page, and deleted with optional removal of the plan file from disk. Every completed planning session automatically registers its final task file through `POST /api/plans` before its agent exits.
 - Projects are color-coded across project, task, and plan screens, with a palette color chosen on project create and detail forms.

@@ -2,10 +2,10 @@ import { isAgentId, type AgentId } from "./agents";
 
 export type SessionState = "starting" | "running" | "exited";
 
-export type SessionExecution = {
-  planId: number;
+export type SessionContext = {
   projectId: string;
   taskId: number;
+  planId?: number;
 };
 
 export type SessionSummary = {
@@ -14,7 +14,7 @@ export type SessionSummary = {
   cwd: string;
   state: SessionState;
   createdAt: string;
-  execution?: SessionExecution;
+  execution?: SessionContext;
 };
 
 export type ClientMessage =
@@ -26,7 +26,7 @@ export type ClientMessage =
       rows: number;
       autoClose?: boolean;
       initialPrompt?: string;
-      execution?: SessionExecution;
+      execution?: SessionContext;
     }
   | { type: "attach"; sessionId: string; cols: number; rows: number }
   | { type: "input"; sessionId: string; data: string }
@@ -51,22 +51,23 @@ const isDimension = (value: unknown, maximum: number) =>
 const isSessionId = (value: unknown) =>
   typeof value === "string" && /^[a-zA-Z0-9-]{1,100}$/.test(value);
 
-export function isSessionExecution(value: unknown): value is SessionExecution {
+export function isSessionContext(value: unknown): value is SessionContext {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return false;
   }
 
-  const execution = value as Record<string, unknown>;
+  const context = value as Record<string, unknown>;
   return (
-    typeof execution.planId === "number" &&
-    Number.isInteger(execution.planId) &&
-    execution.planId > 0 &&
-    typeof execution.projectId === "string" &&
-    execution.projectId.trim().length > 0 &&
-    execution.projectId.length <= 200 &&
-    typeof execution.taskId === "number" &&
-    Number.isInteger(execution.taskId) &&
-    execution.taskId > 0
+    (context.planId === undefined ||
+      (typeof context.planId === "number" &&
+        Number.isInteger(context.planId) &&
+        context.planId > 0)) &&
+    typeof context.projectId === "string" &&
+    context.projectId.trim().length > 0 &&
+    context.projectId.length <= 200 &&
+    typeof context.taskId === "number" &&
+    Number.isInteger(context.taskId) &&
+    context.taskId > 0
   );
 }
 
@@ -89,7 +90,7 @@ export function isClientMessage(value: unknown): value is ClientMessage {
           (typeof message.initialPrompt === "string" &&
             message.initialPrompt.trim().length > 0 &&
             message.initialPrompt.length <= 100_000)) &&
-        (message.execution === undefined || isSessionExecution(message.execution))
+        (message.execution === undefined || isSessionContext(message.execution))
       );
     case "attach":
       return (

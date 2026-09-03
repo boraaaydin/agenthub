@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, type RefObject } from "react";
 
 import { isAgentId, type AgentId } from "@/lib/agents";
-import type { SessionExecution } from "@/lib/agent-protocol";
+import type { SessionContext } from "@/lib/agent-protocol";
 
 type ConsoleProject = {
   id: string;
@@ -39,9 +39,9 @@ type UseTaskRunOptions = {
     project: ConsoleProject,
     prompt: string,
     autoClose?: boolean,
-    execution?: SessionExecution,
+    context?: SessionContext,
   ) => boolean;
-  beginExecution: (execution: SessionExecution) => void;
+  beginExecution: (execution: Required<SessionContext>) => void;
 };
 
 function isTaskPromptResponse(value: unknown): value is TaskPromptResponse {
@@ -117,7 +117,11 @@ export function useTaskRun({
           throw new Error("The plan's project is no longer available. Return to the plans list and try again.");
         }
 
-        const execution = { planId: body.planId, projectId: body.projectId, taskId: body.taskId };
+        const execution: Required<SessionContext> = {
+          planId: body.planId,
+          projectId: body.projectId,
+          taskId: body.taskId,
+        };
         setSelectedProjectId(project.id);
         setAgent(body.agent);
         if (!startSession(body.agent, project, body.prompt, false, execution)) {

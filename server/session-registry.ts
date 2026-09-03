@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { spawn, type IPty } from "node-pty";
 
 import type { AgentId } from "../src/lib/agents";
-import type { SessionExecution, SessionSummary } from "../src/lib/agent-protocol";
+import type { SessionContext, SessionSummary } from "../src/lib/agent-protocol";
 import { getAgentCommand } from "./agents";
 
 const MAX_BUFFER_SIZE = 200 * 1024;
@@ -51,7 +51,7 @@ export class SessionRegistry {
     rows: number,
     autoClose = false,
     initialPrompt?: string,
-    execution?: SessionExecution,
+    execution?: SessionContext,
   ) {
     if (this.sessions.size >= MAX_SESSIONS) {
       throw new Error(`You can keep up to ${MAX_SESSIONS} sessions. Dismiss an exited session before starting another.`);

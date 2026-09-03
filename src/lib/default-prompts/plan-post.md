@@ -14,4 +14,11 @@ Use AgentHub's local task workflow only:
 
 Do not create, reference, comment on, or otherwise interact with GitHub issues.
 
-6. End by reporting the final task path, dependencies, and any assumptions recorded in the task. As your very last action after that report, end your own CLI process so the AgentHub session closes: run `kill -TERM $PPID` from your shell tool, or use the CLI's own exit command if it can be invoked from within this session.
+6. End by reporting the final task path, dependencies, and any assumptions recorded in the task. Do not end the CLI process yet: first complete the registration instruction that appears later in this composed prompt.
+
+7. After attempting the plan registration described in the `## Register the plan in AgentHub` section below, print exactly one final informational line to the terminal; do not create or modify any file for it:
+   `Plan #<planId> · Task #<taskId>: <task title>`
+   - Use the integer `id` field from the `POST /api/plans` 201 response as `<planId>`.
+   - Use `<taskId>` and `<task title>` from the `## Task #<id>: <title>` section above.
+   - If registration does not return 201, still print the line, using `not-registered` as the plan id (for example, `Plan #not-registered · Task #<taskId>: <task title>`).
+   - This line must be your last output. Immediately afterward, end your own CLI process so the AgentHub session closes: run `kill -TERM $PPID` from your shell tool, or use the CLI's own exit command if it can be invoked from within this session.
