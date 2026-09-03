@@ -15,6 +15,7 @@ import {
 import {
   newTaskHref,
   taskFilterStatus,
+  taskStatusBadgeClass,
   TASK_STATUS_LABELS,
   tasksHref,
 } from "@/lib/task-filters";
@@ -24,18 +25,6 @@ export const dynamic = "force-dynamic";
 
 function taskDate(value: string): string {
   return new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(value));
-}
-
-const statusBadgeClasses: Record<Task["status"], string> = {
-  open: "bg-slate-100 text-slate-600",
-  plan_created: "bg-violet-100 text-violet-800",
-  in_progress: "bg-sky-100 text-sky-800",
-  completed: "bg-emerald-100 text-emerald-800",
-  cancelled: "bg-slate-200 text-slate-700",
-};
-
-function statusBadgeClass(status: Task["status"]): string {
-  return statusBadgeClasses[status];
 }
 
 function TaskRows({ projectNames, tasks }: { projectNames: Map<string, { name: string; color?: string }>; tasks: Task[] }) {
@@ -79,7 +68,7 @@ function TaskRows({ projectNames, tasks }: { projectNames: Map<string, { name: s
                     )}
                   </td>
                   <td className="px-4 py-4 align-top sm:px-5">
-                    <span className={`inline-block rounded-md px-2 py-0.5 text-xs font-medium ${statusBadgeClass(task.status)}`}>
+                    <span className={`inline-block rounded-md px-2 py-0.5 text-xs font-medium ${taskStatusBadgeClass(task.status)}`}>
                       {TASK_STATUS_LABELS[task.status]}
                     </span>
                   </td>

@@ -51,11 +51,11 @@ Node server  ──  node-pty  ──  claude / codex / pi CLI process
 
 Project metadata is persisted separately in a git-ignored `data/projects.json` file. Per-project
 tasks are persisted in git-ignored `data/tasks.json`, carry globally sequential integer ids
-starting at `1`, include a lifecycle status and optional completion timestamp, are listed with
+starting at `1`, include a lifecycle status (`open`, `plan_created`, `in_progress`, `completed`, or `cancelled`) and optional completion timestamp, are listed in a semantic table with
 server-side URL pagination and status filtering, and can be retained or removed when their
 project is deleted. Plan registrations are stored in git-ignored `data/plans.json`, with an id,
 projectId, taskId, title, filePath, summary, createdAt, and updatedAt; they can be created,
-edited (including project/task relinking), or deleted. A plan's Markdown file is read from
+edited (including project/task relinking), or deleted. Registering a plan automatically moves its `open` or `in_progress` task to `plan_created`; tasks already `plan_created`, `completed`, or `cancelled` are left unchanged. A plan's Markdown file is read from
 `{project.path}/{plan.filePath}` for display only and is removed only when explicitly requested;
 the composed planning prompt ends by registering the finished task file through `POST /api/plans`.
 Global Task and Plan agent defaults plus the four global task-flow prompts are
@@ -181,7 +181,7 @@ tasks in `.agent/tasks/` are archived by hand into
 - Plans can be executed from the plan list with the configured Task agent and effective task
   execution/after-task prompts. Execution sessions remain available with their scrollback after
   the agent exits.
-- A single `/tasks` screen provides server-rendered, cross-project task pagination and optional project and status filters; it defaults to open tasks, which can be completed and reopened from the list or detail page. `/tasks/new` creates tasks for any saved project. Per-project list and creation URLs redirect to these unified screens.
+- A single `/tasks` screen provides a server-rendered, cross-project task table with pagination and optional project and status filters; it defaults to open tasks, which can be completed and reopened from the list or detail page. Plan registration moves open and in-progress tasks to Plan created, while already planned, completed, and cancelled tasks remain unchanged. `/tasks/new` creates tasks for any saved project. Per-project list and creation URLs redirect to these unified screens.
 - The `/plans` screen lists registered plans across projects with pagination and a project filter. Plans can be registered by hand, viewed and edited on a detail page, and deleted with optional removal of the plan file from disk. Every completed planning session automatically registers its final task file through `POST /api/plans` before its agent exits.
 - Projects are color-coded across project, task, and plan screens, with a palette color chosen on project create and detail forms.
 

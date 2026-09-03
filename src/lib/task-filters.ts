@@ -13,12 +13,24 @@ export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
   cancelled: "Cancelled",
 };
 
+const TASK_STATUS_BADGE_CLASSES: Record<TaskStatus, string> = {
+  open: "bg-slate-100 text-slate-600",
+  plan_created: "bg-violet-100 text-violet-800",
+  in_progress: "bg-sky-100 text-sky-800",
+  completed: "bg-emerald-100 text-emerald-800",
+  cancelled: "bg-slate-200 text-slate-700",
+};
+
 export function isTaskStatus(value: unknown): value is TaskStatus {
   return typeof value === "string" && TASK_STATUSES.includes(value as TaskStatus);
 }
 
 export function taskStatusLabel(status: TaskStatus): string {
   return TASK_STATUS_LABELS[status];
+}
+
+export function taskStatusBadgeClass(status: TaskStatus): string {
+  return TASK_STATUS_BADGE_CLASSES[status];
 }
 
 export function taskFilterStatus(value: string | undefined, showAll?: string): TaskFilterStatus {

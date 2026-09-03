@@ -6,7 +6,13 @@ import { type FormEvent, useState } from "react";
 
 import { BrandBar } from "../../../../brand-bar";
 import { ProjectChip } from "../../../../project-chip";
-import { taskStatusLabel, type TaskStatus } from "@/lib/task-filters";
+import {
+  TASK_STATUSES,
+  TASK_STATUS_LABELS,
+  taskStatusBadgeClass,
+  taskStatusLabel,
+  type TaskStatus,
+} from "@/lib/task-filters";
 import { planConsoleHref } from "@/lib/task-plan";
 
 type Task = {
@@ -39,6 +45,7 @@ export default function TaskDetail({ projectName, projectColor, task }: TaskDeta
   const [taskStatus, setTaskStatus] = useState(task.status);
   const [completedAt, setCompletedAt] = useState(task.completedAt);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isStatusUpdating, setIsStatusUpdating] = useState(false);
   const [isDeleteConfirming, setIsDeleteConfirming] = useState(false);
 
   function resetForm() {
@@ -48,11 +55,14 @@ export default function TaskDetail({ projectName, projectColor, task }: TaskDeta
     setStatusMessage("");
   }
 
-  async function changeTaskStatus() {
-    const nextStatus = taskStatus === "completed" ? "open" : "completed";
+  async function changeTaskStatus(nextStatus: TaskStatus) {
+    if (nextStatus === taskStatus || isStatusUpdating || isSubmitting) {
+      return;
+    }
+
     setError("");
     setStatusMessage("");
-    setIsSubmitting(true);
+    setIsStatusUpdating(true);
 
     try {
       const response = await fetch(taskApiPath, {
@@ -70,12 +80,12 @@ export default function TaskDetail({ projectName, projectColor, task }: TaskDeta
       const updatedTask = body as Task;
       setTaskStatus(updatedTask.status);
       setCompletedAt(updatedTask.completedAt);
-      setStatusMessage(updatedTask.status === "completed" ? "Task completed." : "Task reopened.");
+      setStatusMessage(`Status updated to ${taskStatusLabel(updatedTask.status)}.`);
       router.refresh();
     } catch {
       setError("Unable to reach the server. Check your connection and try again.");
     } finally {
-      setIsSubmitting(false);
+      setIsStatusUpdating(false);
     }
   }
 
@@ -147,7 +157,7 @@ export default function TaskDetail({ projectName, projectColor, task }: TaskDeta
               <ProjectChip projectId={task.projectId} name={projectName} color={projectColor} /> tasks
             </Link>
             <span className="text-sm text-slate-500">Task #{task.id}</span>
-            <span className={`rounded-md px-2 py-0.5 text-xs font-medium ${taskStatus === "completed" ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"}`}>
+            <span className={`rounded-md px-2 py-0.5 text-xs font-medium ${taskStatusBadgeClass(taskStatus)}`}>
               {taskStatusLabel(taskStatus)}
             </span>
           </div>
@@ -158,15 +168,24 @@ export default function TaskDetail({ projectName, projectColor, task }: TaskDeta
               Completed {new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(completedAt))}
             </p>
           )}
-          <div className="mt-4 flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={changeTaskStatus}
-              disabled={isSubmitting || (taskStatus !== "open" && taskStatus !== "completed")}
-              className="inline-flex h-10 items-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-800 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-3 focus:ring-sky-100 disabled:cursor-not-allowed disabled:bg-slate-100"
-            >
-              {isSubmitting ? (taskStatus === "completed" ? "Reopening…" : "Completing…") : taskStatus === "completed" ? "Reopen" : "Complete"}
-            </button>
+          <div className="mt-4 flex flex-wrap items-end gap-3">
+            <div className="w-full sm:max-w-xs">
+              <label className="block text-sm font-medium text-slate-800" htmlFor="task-status">
+                Status
+              </label>
+              <select
+                id="task-status"
+                value={taskStatus}
+                onChange={(event) => changeTaskStatus(event.target.value as TaskStatus)}
+                disabled={isStatusUpdating || isSubmitting}
+                className="mt-2 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-sky-600 focus:ring-3 focus:ring-sky-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+              >
+                {TASK_STATUSES.map((status) => (
+                  <option key={status} value={status}>{TASK_STATUS_LABELS[status]}</option>
+                ))}
+              </select>
+              {isStatusUpdating && <p role="status" className="mt-2 text-sm text-slate-600">Updating status…</p>}
+            </div>
             <Link
               href={planConsoleHref(task.projectId, task.id)}
               className="inline-flex h-10 items-center rounded-xl border border-sky-200 bg-white px-4 text-sm font-medium text-sky-800 shadow-sm transition hover:border-sky-300 hover:bg-sky-50 focus:outline-none focus:ring-3 focus:ring-sky-100"
@@ -213,7 +232,7 @@ export default function TaskDetail({ projectName, projectColor, task }: TaskDeta
           <div className="flex flex-wrap items-center gap-3 pt-2">
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isStatusUpdating}
               className="h-11 rounded-xl bg-sky-700 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-800 focus:outline-none focus:ring-3 focus:ring-sky-200 disabled:cursor-not-allowed disabled:bg-slate-300"
             >
               {isSubmitting ? "Saving changes…" : "Save changes"}
@@ -221,7 +240,7 @@ export default function TaskDetail({ projectName, projectColor, task }: TaskDeta
             <button
               type="button"
               onClick={resetForm}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isStatusUpdating}
               className="h-11 rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-800 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-3 focus:ring-sky-100 disabled:cursor-not-allowed disabled:bg-slate-100"
             >
               Cancel
@@ -237,7 +256,7 @@ export default function TaskDetail({ projectName, projectColor, task }: TaskDeta
               <button
                 type="button"
                 onClick={deleteTask}
-                disabled={isSubmitting}
+                disabled={isSubmitting || isStatusUpdating}
                 className="h-11 rounded-xl bg-red-700 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-red-800 focus:outline-none focus:ring-3 focus:ring-red-200 disabled:cursor-not-allowed disabled:bg-red-300"
               >
                 {isSubmitting ? "Deleting task…" : "Confirm delete"}
@@ -245,7 +264,7 @@ export default function TaskDetail({ projectName, projectColor, task }: TaskDeta
               <button
                 type="button"
                 onClick={() => setIsDeleteConfirming(false)}
-                disabled={isSubmitting}
+                disabled={isSubmitting || isStatusUpdating}
                 className="h-11 rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-800 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-3 focus:ring-sky-100 disabled:cursor-not-allowed disabled:bg-slate-100"
               >
                 Cancel
@@ -255,7 +274,7 @@ export default function TaskDetail({ projectName, projectColor, task }: TaskDeta
             <button
               type="button"
               onClick={() => setIsDeleteConfirming(true)}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isStatusUpdating}
               className="mt-4 h-11 rounded-xl border border-red-300 bg-white px-4 text-sm font-medium text-red-800 shadow-sm transition hover:border-red-400 hover:bg-red-50 focus:outline-none focus:ring-3 focus:ring-red-100 disabled:cursor-not-allowed disabled:bg-slate-100"
             >
               Delete task
