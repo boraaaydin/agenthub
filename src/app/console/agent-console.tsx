@@ -510,7 +510,11 @@ export function AgentConsole() {
                   {isPromptVisible ? "Hide prompt" : "Show prompt"}
                 </button>
                 {activeSession?.execution?.planId && (
-                  <PlanCompletionAction isCompleting={isCompleting} onComplete={completeActivePlan} />
+                  <PlanCompletionAction
+                    isCompleting={isCompleting}
+                    isSessionRunning={activeSession.state !== "exited"}
+                    onComplete={completeActivePlan}
+                  />
                 )}
               </div>
 

@@ -191,9 +191,9 @@ tasks in `.agent/tasks/` are archived by hand into
   **Execute plan** action starts the configured Task agent with effective task
   execution/after-task prompts and advances the plan to `executing`. Execution sessions remain
   available with their scrollback after the agent exits; the console marks the plan `executed`
-  and offers to complete the plan and its task. The console also provides a **Complete task and
-  plan** action during any selected execution session, which completes both records, stops a
-  running session, and removes it from the session list. Planning sessions carry project/task
+  and offers to complete the plan and its task. The console also provides a **Complete task**
+  action during a selected execution session after its agent has exited, which completes both
+  records and removes the session from the session list. Planning sessions carry project/task
   context and execution sessions additionally carry their plan identifier in the in-memory server
   session registry, so contextual information and execution controls survive reloads and other
   browser tabs; a server restart removes this information together with the sessions.
