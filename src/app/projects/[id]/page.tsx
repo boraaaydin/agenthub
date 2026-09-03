@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { BrandBar } from "../../brand-bar";
 import ProjectDetail from "./project-detail";
 import { getProject, ProjectStoreError } from "@/lib/projects-store";
-import { countProjectTasks, TaskStoreError } from "@/lib/tasks-store";
+import { countProjectWorkitems, WorkitemStoreError } from "@/lib/workitems-store";
 
 export const dynamic = "force-dynamic";
 
@@ -16,13 +16,13 @@ export default async function ProjectDetailPage(props: PageProps<"/projects/[id]
   try {
     project = await getProject(id);
     if (project) {
-      taskCount = await countProjectTasks(project.id);
+      taskCount = await countProjectWorkitems(project.id);
     }
   } catch (error) {
     console.error("Unable to render project", error);
     const message = error instanceof ProjectStoreError
       ? "Project data could not be read. Check data/projects.json and reload this page."
-      : error instanceof TaskStoreError
+      : error instanceof WorkitemStoreError
         ? "Task data could not be read. Check data/tasks.json and reload this page."
         : "Project details could not be loaded. Reload this page and try again.";
 

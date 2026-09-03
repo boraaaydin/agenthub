@@ -9,14 +9,14 @@ import { BrandBar } from "../brand-bar";
 import { AGENTS, DEFAULT_AGENT_ID, getAgent, type AgentId } from "@/lib/agents";
 import type { ClientMessage, SessionContext, SessionSummary } from "@/lib/agent-protocol";
 import { terminalSubmission } from "@/lib/terminal-input";
-import { PlanClosePrompt } from "./plan-close-prompt";
-import { PlanCompletionAction } from "./plan-completion-action";
+import { PlanClosePrompt } from "./task-close-prompt";
+import { PlanCompletionAction } from "./task-completion-action";
 import { SessionInfo } from "./session-info";
 import { SessionSidebar } from "./session-sidebar";
 import { SessionTerminal } from "./session-terminal";
 import { useAgentSocket } from "./use-agent-socket";
 import { usePlanCreation } from "./use-plan-creation";
-import { usePlanExecution } from "./use-plan-execution";
+import { usePlanExecution } from "./use-task-execution";
 import { usePlanRun } from "./use-plan-run";
 import { useTaskRun } from "./use-task-run";
 

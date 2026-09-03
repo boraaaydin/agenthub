@@ -4,7 +4,7 @@ import {
   ProjectValidationError,
   updateProject,
 } from "@/lib/projects-store";
-import { deleteProjectTasks, TaskStoreError } from "@/lib/tasks-store";
+import { deleteProjectWorkitems, WorkitemStoreError } from "@/lib/workitems-store";
 
 export const dynamic = "force-dynamic";
 
@@ -53,13 +53,13 @@ export async function DELETE(
       return Response.json({ error: "Project not found." }, { status: 404 });
     }
     if (deleteTasks) {
-      await deleteProjectTasks(id);
+      await deleteProjectWorkitems(id);
     }
     return Response.json(project);
   } catch (error) {
     const message = error instanceof ProjectStoreError
       ? "Project data could not be updated. Check data/projects.json and try again."
-      : error instanceof TaskStoreError
+      : error instanceof WorkitemStoreError
         ? "Task data could not be updated. Check data/tasks.json and try again."
         : "Unable to delete the project. Try again.";
     console.error("Unable to delete project", error);

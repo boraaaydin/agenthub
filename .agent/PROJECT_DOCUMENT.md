@@ -50,8 +50,8 @@ Node server  ──  node-pty  ──  claude / codex / pi CLI process
   active sessions.
 
 Project metadata is persisted separately in a git-ignored `data/projects.json` file. Per-project
-tasks are persisted in git-ignored `data/tasks.json`, carry globally sequential integer ids
-starting at `1`, include a lifecycle status (`open`, `plan_creating`, `plan_created`, `in_progress`, `completed`, or `cancelled`) and optional completion timestamp, are listed in a semantic table with
+workitems are persisted in git-ignored `data/workitems.json`, carry globally sequential integer ids
+starting at `1`, include a lifecycle status (`open`, `task_creating`, `task_created`, `in_progress`, `completed`, or `cancelled`) and optional completion timestamp, are listed in a semantic table with
 server-side URL pagination and status filtering, and can be retained or removed when their
 project is deleted. A planning session moves an `open` task to `plan_creating`; registering its
 plan moves it to `plan_created`, while an unregistered planning session returning or exiting
@@ -73,7 +73,11 @@ by default), while the settings remain available for future task and plan flows.
 survive server restarts; agent sessions remain in-memory only and end when the server restarts.
 Project records can be edited or deleted from their detail page. Each project may carry an optional palette color token; projects without one derive a stable color from their id, and the project name is shown as a white-on-color chip wherever it appears in project, task, and plan screens. Creating a plan from a task composes the effective Task planning and After planning prompts (saved text when present, otherwise the built-in Markdown defaults) with that task's title and detail plus a code-defined language rule, then starts the configured Plan agent in the task's project directory through the console.
 
-### Open decisions
+### Domain migration
+
+The persisted work model uses **Workitems** for units of work and **Tasks** for registered Markdown task files. `data-migration.ts` performs an idempotent one-time migration of legacy `data/tasks.json` workitems into `data/workitems.json`, legacy `data/plans.json` task records into `data/tasks.json`, and lifecycle events to version 2. `/tasks` intentionally now means registered Tasks (it does not redirect); legacy `/plans` and project task URLs permanently redirect to their renamed routes.
+
+## Open decisions
 
 - Session persistence across a server restart (in-memory only vs. on disk).
 - Console sessions run in the directory of a selected saved project.

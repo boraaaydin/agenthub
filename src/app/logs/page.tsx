@@ -9,8 +9,8 @@ import {
   logsHref,
   type LifecycleEvent,
 } from "@/lib/lifecycle-log-store";
-import { planDetailHref, planStatusBadgeClass, planStatusLabel } from "@/lib/plan-filters";
-import { getPlan } from "@/lib/plans-store";
+import { planDetailHref, planStatusBadgeClass, planStatusLabel } from "@/lib/task-filters";
+import { getPlan } from "@/lib/tasks-store";
 import { listProjects } from "@/lib/projects-store";
 import { taskStatusBadgeClass, taskStatusLabel } from "@/lib/task-filters";
 import { getTask } from "@/lib/tasks-store";

@@ -8,7 +8,7 @@ import {
   type ServerMessage,
   type SessionSummary,
 } from "./src/lib/agent-protocol";
-import { subscribeToTaskChanges } from "./src/lib/task-events";
+import { subscribeToWorkitemChanges } from "./src/lib/workitem-events";
 import { SessionRegistry } from "./server/session-registry";
 
 const port = Number.parseInt(process.env.PORT ?? "3000", 10);
@@ -24,8 +24,8 @@ const httpServer = createServer((request, response) => {
 });
 const socketServer = new WebSocketServer({ noServer: true });
 const clients = new Set<WebSocket>();
-const unsubscribeFromTaskChanges = subscribeToTaskChanges((change) => {
-  broadcast({ type: "task-changed", ...change });
+const unsubscribeFromWorkitemChanges = subscribeToWorkitemChanges((change) => {
+  broadcast({ type: "workitem-changed", ...change });
 });
 
 const sessions = new SessionRegistry({
@@ -231,7 +231,7 @@ function shutdown() {
     return;
   }
   shuttingDown = true;
-  unsubscribeFromTaskChanges();
+  unsubscribeFromWorkitemChanges();
   sessions.stopAll();
   socketServer.clients.forEach((client) => client.close());
   httpServer.close(() => process.exit(0));
