@@ -2,13 +2,19 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 
 import { BrandBar } from "../../brand-bar";
 import { ProjectChip, UnknownProjectChip } from "../../project-chip";
 import { DeletePlanSection } from "./delete-plan-section";
 import { PlanFilePreview } from "./plan-file-preview";
-import { planStatusBadgeClass, planStatusLabel, type PlanStatus } from "@/lib/plan-filters";
+import {
+  PLAN_STATUSES,
+  PLAN_STATUS_LABELS,
+  planStatusBadgeClass,
+  planStatusLabel,
+  type PlanStatus,
+} from "@/lib/plan-filters";
 
 type Plan = {
   id: number;
@@ -50,12 +56,24 @@ export default function PlanDetail({ plan, projects, tasksByProject, taskExists,
   const [error, setError] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState<PlanStatus | null>(null);
+  const mountedRef = useRef(true);
+  const statusControllerRef = useRef<AbortController | null>(null);
   const apiPath = `/api/plans/${currentPlan.id}`;
   const currentProject = projects.find((project) => project.id === currentPlan.projectId);
   const currentTaskExists = taskExists && currentPlan.projectId === plan.projectId && currentPlan.taskId === plan.taskId
     ? true
     : Boolean(tasksByProject[currentPlan.projectId]?.some((task) => task.id === currentPlan.taskId));
   const availableTasks = tasksByProject[projectId] ?? [];
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      statusControllerRef.current?.abort();
+    };
+  }, []);
 
   function resetForm() {
     setProjectId(plan.projectId);
@@ -109,7 +127,7 @@ export default function PlanDetail({ plan, projects, tasksByProject, taskExists,
         return;
       }
       const updatedPlan = body as Plan;
-      setCurrentPlan(updatedPlan);
+      setCurrentPlan((current) => ({ ...updatedPlan, status: current.status }));
       setProjectId(updatedPlan.projectId);
       setTaskId(String(updatedPlan.taskId));
       setTitle(updatedPlan.title);
@@ -121,6 +139,65 @@ export default function PlanDetail({ plan, projects, tasksByProject, taskExists,
       setError("Unable to reach the server. Check your connection and try again.");
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  async function updatePlanStatus(status: PlanStatus) {
+    if (status === currentPlan.status || statusControllerRef.current) {
+      return;
+    }
+
+    const controller = new AbortController();
+    statusControllerRef.current = controller;
+    setPendingStatus(status);
+    setIsUpdatingStatus(true);
+    setError("");
+    setStatusMessage("");
+
+    let receivedResponse = false;
+    try {
+      const response = await fetch(apiPath, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+        signal: controller.signal,
+      });
+      receivedResponse = true;
+      let body: Plan | ApiError = {};
+      try {
+        body = (await response.json()) as Plan | ApiError;
+      } catch {
+        // A non-JSON error response still receives the standard actionable fallback.
+      }
+      if (!response.ok) {
+        throw new Error((body as ApiError).error ?? "Unable to update the plan status. Try again.");
+      }
+
+      const updatedPlan = body as Plan;
+      if (mountedRef.current) {
+        setCurrentPlan((current) => ({
+          ...current,
+          status: updatedPlan.status,
+          updatedAt: updatedPlan.updatedAt,
+        }));
+        setPendingStatus(null);
+        setStatusMessage(`Plan status updated to ${planStatusLabel(updatedPlan.status)}.`);
+        router.refresh();
+      }
+    } catch (caughtError) {
+      if (!controller.signal.aborted && mountedRef.current) {
+        setPendingStatus(null);
+        setError(receivedResponse && caughtError instanceof Error
+          ? caughtError.message
+          : "Unable to reach the server. Check your connection and try again.");
+      }
+    } finally {
+      if (statusControllerRef.current === controller) {
+        statusControllerRef.current = null;
+      }
+      if (mountedRef.current) {
+        setIsUpdatingStatus(false);
+      }
     }
   }
 
@@ -141,7 +218,7 @@ export default function PlanDetail({ plan, projects, tasksByProject, taskExists,
           <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
             <Link href="/plans" className="font-medium text-sky-700 transition hover:text-sky-900 focus:outline-none focus:ring-3 focus:ring-sky-100">Plans</Link>
             <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">Plan #{currentPlan.id}</span>
-            <span className={`rounded-md px-2 py-0.5 text-xs font-medium ${planStatusBadgeClass(currentPlan.status)}`}>
+            <span className={`inline-block rounded-md px-2 py-0.5 text-xs font-medium ${planStatusBadgeClass(currentPlan.status)}`}>
               {planStatusLabel(currentPlan.status)}
             </span>
           </div>
@@ -155,6 +232,20 @@ export default function PlanDetail({ plan, projects, tasksByProject, taskExists,
             ) : <span>Task #{currentPlan.taskId}</span>}
           </div>
           <p className="mt-2 text-sm text-slate-500">Created {formatDate(currentPlan.createdAt)} · Updated {formatDate(currentPlan.updatedAt)}</p>
+          <div className="mt-4 max-w-xs">
+            <label className="block text-sm font-medium text-slate-800" htmlFor="plan-status">Plan status</label>
+            <select
+              id="plan-status"
+              value={pendingStatus ?? currentPlan.status}
+              onChange={(event) => { void updatePlanStatus(event.target.value as PlanStatus); }}
+              disabled={isUpdatingStatus || isSubmitting}
+              aria-describedby={isUpdatingStatus ? "plan-status-progress" : undefined}
+              className="mt-2 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-sky-600 focus:ring-3 focus:ring-sky-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+            >
+              {PLAN_STATUSES.map((status) => <option key={status} value={status}>{PLAN_STATUS_LABELS[status]}</option>)}
+            </select>
+            {isUpdatingStatus && <p id="plan-status-progress" role="status" className="mt-2 text-sm text-slate-600">Updating status…</p>}
+          </div>
         </header>
 
         <form onSubmit={savePlan} className="mt-8 space-y-6" noValidate>

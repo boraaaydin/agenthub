@@ -442,7 +442,7 @@ export function AgentConsole() {
                 planId={execution.planId}
                 taskId={execution.taskId}
                 isClosing={execution.isClosing}
-                isClosed={execution.prompt === "success"}
+                isCompleted={execution.prompt === "success"}
                 onConfirm={() => { void confirmClose(dismissExitedExecution); }}
                 onDismiss={dismissPrompt}
               />

@@ -4,7 +4,7 @@ type PlanClosePromptProps = {
   planId: number;
   taskId: number;
   isClosing: boolean;
-  isClosed: boolean;
+  isCompleted: boolean;
   onConfirm: () => void;
   onDismiss: () => void;
 };
@@ -13,14 +13,14 @@ export function PlanClosePrompt({
   planId,
   taskId,
   isClosing,
-  isClosed,
+  isCompleted,
   onConfirm,
   onDismiss,
 }: PlanClosePromptProps) {
-  if (isClosed) {
+  if (isCompleted) {
     return (
       <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-        Plan #{planId} was closed and task #{taskId} was marked completed. The session was dismissed.
+        Plan #{planId} and task #{taskId} were marked completed. The session was dismissed.
       </p>
     );
   }
@@ -29,7 +29,7 @@ export function PlanClosePrompt({
     <section aria-labelledby="plan-close-heading" className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-4 sm:px-5">
       <h2 id="plan-close-heading" className="text-sm font-semibold text-sky-950">Execution finished</h2>
       <p className="mt-1 text-sm leading-6 text-sky-900">
-        Close plan #{planId} and mark task #{taskId} as completed?
+        Mark plan #{planId} and task #{taskId} as completed?
       </p>
       <div className="mt-3 flex flex-wrap gap-3">
         <button
@@ -38,7 +38,7 @@ export function PlanClosePrompt({
           disabled={isClosing}
           className="h-10 rounded-xl bg-sky-700 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-800 focus:outline-none focus:ring-3 focus:ring-sky-200 disabled:cursor-not-allowed disabled:bg-slate-300"
         >
-          {isClosing ? "Closing plan…" : "Close plan and complete task"}
+          {isClosing ? "Completing plan…" : "Complete plan and task"}
         </button>
         <button
           type="button"

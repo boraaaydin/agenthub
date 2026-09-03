@@ -131,9 +131,9 @@ export function usePlanExecution({ setError }: UsePlanExecutionOptions) {
     updateExecution({ ...current, isClosing: true });
     try {
       try {
-        await updatePlanStatus(current.planId, "closed");
+        await updatePlanStatus(current.planId, "completed");
       } catch (error) {
-        throw new Error(`Could not close plan #${current.planId}: ${error instanceof Error ? error.message : "Try again."}`);
+        throw new Error(`Could not complete plan #${current.planId}: ${error instanceof Error ? error.message : "Try again."}`);
       }
 
       const response = await fetch(
@@ -145,10 +145,10 @@ export function usePlanExecution({ setError }: UsePlanExecutionOptions) {
         },
       );
       if (!response.ok) {
-        throw new Error(`Plan #${current.planId} was closed, but task #${current.taskId} could not be completed: ${await readApiError(response)}`);
+        throw new Error(`Plan #${current.planId} was completed, but task #${current.taskId} could not be completed: ${await readApiError(response)}`);
       }
       if (!dismissExitedSession(current.sessionId)) {
-        throw new Error(`Plan #${current.planId} was closed and task #${current.taskId} was completed, but the exited session could not be dismissed. Reconnect and try again.`);
+        throw new Error(`Plan #${current.planId} and task #${current.taskId} were completed, but the exited session could not be dismissed. Reconnect and try again.`);
       }
 
       updateExecution({ ...current, prompt: "success", isClosing: false });
@@ -157,7 +157,7 @@ export function usePlanExecution({ setError }: UsePlanExecutionOptions) {
       if (latest) {
         updateExecution({ ...latest, isClosing: false });
       }
-      showError(error instanceof Error ? error.message : "Unable to close the plan. Try again.");
+      showError(error instanceof Error ? error.message : "Unable to complete the plan. Try again.");
     }
   }, [showError, updateExecution, updatePlanStatus]);
 

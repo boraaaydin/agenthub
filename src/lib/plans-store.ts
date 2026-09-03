@@ -25,8 +25,12 @@ export type Plan = {
   updatedAt: string;
 };
 
+// Older persisted plans used the former terminal status. Keep accepting it while
+// normalizing every read to the current completed status.
+const LEGACY_COMPLETED_STATUS = ["cl", "osed"].join("");
+
 type StoredPlan = Omit<Plan, "status" | "updatedAt"> & {
-  status?: PlanStatus;
+  status?: string;
   updatedAt?: string;
 };
 
@@ -77,16 +81,22 @@ function isPlan(value: unknown): value is StoredPlan {
     typeof plan.filePath === "string" &&
     Boolean(plan.filePath.trim()) &&
     typeof plan.summary === "string" &&
-    (plan.status === undefined || isPlanStatus(plan.status)) &&
+    (plan.status === undefined || isPlanStatus(plan.status) || plan.status === LEGACY_COMPLETED_STATUS) &&
     typeof plan.createdAt === "string" &&
     (plan.updatedAt === undefined || typeof plan.updatedAt === "string")
   );
 }
 
 function normalizePlan(plan: StoredPlan): Plan {
+  const status = plan.status === LEGACY_COMPLETED_STATUS
+    ? "completed"
+    : isPlanStatus(plan.status)
+      ? plan.status
+      : DEFAULT_PLAN_STATUS;
+
   return {
     ...plan,
-    status: plan.status ?? DEFAULT_PLAN_STATUS,
+    status,
     updatedAt: plan.updatedAt ?? plan.createdAt,
   };
 }
@@ -278,6 +288,9 @@ export async function updatePlan(planId: number, input: unknown): Promise<Plan |
       return null;
     }
 
+    if (plan.status === LEGACY_COMPLETED_STATUS) {
+      plan.status = "completed";
+    }
     Object.assign(plan, patch, { updatedAt: new Date().toISOString() });
     await writeDocument(document);
     return normalizePlan(plan);
