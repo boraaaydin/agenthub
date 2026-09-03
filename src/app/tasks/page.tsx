@@ -19,6 +19,8 @@ import {
   TASK_STATUS_LABELS,
   tasksHref,
 } from "@/lib/task-filters";
+import { planDetailHref, planStatusBadgeClass, planStatusLabel } from "@/lib/plan-filters";
+import { listLatestPlansByTask, planTaskKey, type LatestPlansByTask } from "@/lib/plans-store";
 import { planConsoleHref } from "@/lib/task-plan";
 
 export const dynamic = "force-dynamic";
@@ -27,17 +29,26 @@ function taskDate(value: string): string {
   return new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(value));
 }
 
-function TaskRows({ projectNames, tasks }: { projectNames: Map<string, { name: string; color?: string }>; tasks: Task[] }) {
+function TaskRows({
+  projectNames,
+  tasks,
+  plansByTask,
+}: {
+  projectNames: Map<string, { name: string; color?: string }>;
+  tasks: Task[];
+  plansByTask: LatestPlansByTask;
+}) {
   return (
     <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       <div className="overflow-x-auto">
-        <table aria-label="All tasks" className="w-full min-w-[760px] border-collapse text-left text-sm">
+        <table aria-label="All tasks" className="w-full min-w-[860px] border-collapse text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
             <tr>
               <th scope="col" className="px-4 py-3 sm:px-5">Project</th>
               <th scope="col" className="px-4 py-3 text-right sm:px-5">#</th>
               <th scope="col" className="min-w-56 px-4 py-3 sm:px-5">Title</th>
               <th scope="col" className="px-4 py-3 sm:px-5">Status</th>
+              <th scope="col" className="px-4 py-3 sm:px-5">Plan</th>
               <th scope="col" className="px-4 py-3 whitespace-nowrap sm:px-5">Created</th>
               <th scope="col" className="px-4 py-3 sm:px-5">Actions</th>
             </tr>
@@ -45,6 +56,7 @@ function TaskRows({ projectNames, tasks }: { projectNames: Map<string, { name: s
           <tbody className="divide-y divide-slate-200">
             {tasks.map((task) => {
               const project = projectNames.get(task.projectId);
+              const planInfo = plansByTask.get(planTaskKey(task.projectId, task.id));
               const titleClass = `break-words font-medium ${task.status === "completed" ? "text-slate-500" : "text-slate-900"}`;
 
               return (
@@ -71,6 +83,23 @@ function TaskRows({ projectNames, tasks }: { projectNames: Map<string, { name: s
                     <span className={`inline-block rounded-md px-2 py-0.5 text-xs font-medium ${taskStatusBadgeClass(task.status)}`}>
                       {TASK_STATUS_LABELS[task.status]}
                     </span>
+                  </td>
+                  <td className="px-4 py-4 align-top sm:px-5">
+                    {planInfo ? (
+                      <div className="flex items-center gap-1.5">
+                        <Link
+                          href={planDetailHref(planInfo.plan.id)}
+                          className={`inline-block rounded-md px-2 py-0.5 text-xs font-medium transition hover:opacity-80 focus:outline-none focus:ring-3 focus:ring-sky-100 ${planStatusBadgeClass(planInfo.plan.status)}`}
+                        >
+                          {planStatusLabel(planInfo.plan.status)}
+                        </Link>
+                        {planInfo.planCount > 1 && (
+                          <span className="text-xs text-slate-400">+{planInfo.planCount - 1}</span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-slate-400">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-4 align-top whitespace-nowrap text-slate-500 sm:px-5">
                     <time dateTime={task.createdAt}>{taskDate(task.createdAt)}</time>
@@ -113,6 +142,7 @@ export default async function TasksPage(props: PageProps<"/tasks">) {
   let taskPage: Awaited<ReturnType<typeof listAllTasks>> | undefined;
   let hasAnyTasks = false;
   let selectedProjectId = "";
+  let plansByTask: LatestPlansByTask = new Map();
   let error = "";
 
   try {
@@ -134,6 +164,12 @@ export default async function TasksPage(props: PageProps<"/tasks">) {
       : caughtError instanceof TaskStoreError
         ? "Task data could not be read. Check data/tasks.json and reload this page."
         : "Tasks could not be loaded. Reload this page and try again.";
+  }
+
+  try {
+    plansByTask = await listLatestPlansByTask();
+  } catch (caughtError) {
+    console.error("Unable to load task plan statuses", caughtError);
   }
 
   const filteredNewTaskHref = newTaskHref({ projectId: selectedProjectId, status: selectedStatus });
@@ -202,7 +238,7 @@ export default async function TasksPage(props: PageProps<"/tasks">) {
             ) : (
               <>
                 {taskPage.tasks.length > 0 ? (
-                  <TaskRows projectNames={projectNames} tasks={taskPage.tasks} />
+                  <TaskRows projectNames={projectNames} tasks={taskPage.tasks} plansByTask={plansByTask} />
                 ) : (
                   <p className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
                     There are no tasks on this page.

@@ -53,6 +53,8 @@ export type PaginatedPlans = {
   totalPages: number;
 };
 
+export type LatestPlansByTask = Map<string, { plan: Plan; planCount: number }>;
+
 export const PLANS_FILE_PATH = path.join(process.cwd(), "data", "plans.json");
 export const PLANS_PAGE_SIZE = 10;
 
@@ -310,6 +312,32 @@ export async function deletePlan(planId: number): Promise<Plan | null> {
     await writeDocument(document);
     return normalizePlan(deletedPlan);
   });
+}
+
+export function planTaskKey(projectId: string, taskId: number): string {
+  return `${projectId}:${taskId}`;
+}
+
+export async function listLatestPlansByTask(): Promise<LatestPlansByTask> {
+  const { plans } = await readDocument();
+  const latestPlansByTask: LatestPlansByTask = new Map();
+
+  for (const plan of plans.map(normalizePlan)) {
+    const key = planTaskKey(plan.projectId, plan.taskId);
+    const current = latestPlansByTask.get(key);
+
+    if (!current) {
+      latestPlansByTask.set(key, { plan, planCount: 1 });
+      continue;
+    }
+
+    latestPlansByTask.set(key, {
+      plan: plan.createdAt >= current.plan.createdAt ? plan : current.plan,
+      planCount: current.planCount + 1,
+    });
+  }
+
+  return latestPlansByTask;
 }
 
 export async function listAllPlans({ page, pageSize, projectId, statuses }: PaginationInput): Promise<PaginatedPlans> {
