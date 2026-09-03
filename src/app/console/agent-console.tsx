@@ -37,6 +37,7 @@ export function AgentConsole() {
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [agent, setAgent] = useState<AgentId>(DEFAULT_AGENT_ID);
   const [prompt, setPrompt] = useState("");
+  const [isPromptVisible, setIsPromptVisible] = useState(true);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [newSession, setNewSession] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
@@ -44,6 +45,8 @@ export function AgentConsole() {
   const [terminalReady, setTerminalReady] = useState(false);
   const terminalHostRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
+  const promptTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const focusPromptOnRevealRef = useRef(false);
   const activeSessionRef = useRef<string | null>(null);
   const attachedSessionRef = useRef<string | null>(null);
   const pendingSessionIdRef = useRef<string | null>(null);
@@ -70,6 +73,9 @@ export function AgentConsole() {
         activeSessionRef.current = nextSessions[0].id;
         setSelectedSessionId(nextSessions[0].id);
         setNewSession(false);
+        setIsPromptVisible(false);
+      } else {
+        setIsPromptVisible(true);
       }
       return;
     }
@@ -86,6 +92,7 @@ export function AgentConsole() {
       terminalRef.current?.clear();
       setSelectedSessionId(null);
       setNewSession(true);
+      setIsPromptVisible(true);
     }
   }, []);
 
@@ -111,6 +118,7 @@ export function AgentConsole() {
     setIsCreating(false);
     setNewSession(false);
     setSelectedSessionId(session.id);
+    setIsPromptVisible(false);
   }, [claimSession]);
 
   const onExit = useCallback((sessionId: string, code: number) => {
@@ -203,12 +211,21 @@ export function AgentConsole() {
   const onTerminalReady = useCallback(() => setTerminalReady(true), []);
 
   const activeSession = sessions.find((session) => session.id === selectedSessionId) ?? null;
+  const isNewSessionMode = newSession || !activeSession;
+
   const activeAgent = activeSession ? getAgent(activeSession.agent) : null;
   const activeProject = activeSession ? projects.find((project) => project.path === activeSession.cwd) : null;
   const selectedProject = projects.find((project) => project.id === selectedProjectId) ?? null;
   const selectedAgent = getAgent(agent);
   const canStart = connected && !isCreating && !isLoadingProjects && Boolean(selectedProject) && prompt.trim().length > 0;
   const canSend = connected && activeSession?.state === "running" && prompt.trim().length > 0;
+
+  useEffect(() => {
+    if (isPromptVisible && focusPromptOnRevealRef.current) {
+      promptTextareaRef.current?.focus();
+      focusPromptOnRevealRef.current = false;
+    }
+  }, [isPromptVisible]);
 
   const startSession = useCallback((nextAgent: AgentId, project: ConsoleProject, nextPrompt: string, autoClose = false) => {
     activeSessionRef.current = null;
@@ -217,6 +234,7 @@ export function AgentConsole() {
     setError("");
     setNewSession(true);
     setSelectedSessionId(null);
+    setIsPromptVisible(true);
     if (!send({
       type: "start",
       agent: nextAgent,
@@ -240,6 +258,7 @@ export function AgentConsole() {
     setError("");
     setNewSession(false);
     setSelectedSessionId(sessionId);
+    setIsPromptVisible(false);
   }
 
   function startNewSession() {
@@ -248,6 +267,7 @@ export function AgentConsole() {
     setPrompt("");
     setNewSession(true);
     setSelectedSessionId(null);
+    setIsPromptVisible(true);
     attachedSessionRef.current = null;
     terminalRef.current?.clear();
   }
@@ -267,6 +287,13 @@ export function AgentConsole() {
     }
     setError("");
     send({ type: "stop", sessionId: activeSession.id });
+  }
+
+  function togglePromptVisibility() {
+    if (!isPromptVisible) {
+      focusPromptOnRevealRef.current = true;
+    }
+    setIsPromptVisible((visible) => !visible);
   }
 
   function submitPrompt(event: FormEvent<HTMLFormElement>) {
@@ -406,35 +433,6 @@ export function AgentConsole() {
               </section>
             )}
 
-            <form onSubmit={submitPrompt} className="flex flex-col gap-3">
-              <label className="text-sm font-medium text-slate-800" htmlFor="prompt">Prompt</label>
-              <textarea
-                id="prompt"
-                value={prompt}
-                onChange={(event) => setPrompt(event.target.value)}
-                rows={4}
-                disabled={Boolean(activeSession && activeSession.state === "exited")}
-                placeholder={activeAgent ? `Describe what you want ${activeAgent.label} to do…` : `Describe what you want ${selectedAgent.label} to do…`}
-                className="w-full resize-y rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm leading-6 outline-none transition placeholder:text-slate-400 focus:border-sky-600 focus:ring-3 focus:ring-sky-100 disabled:cursor-not-allowed disabled:bg-slate-100"
-              />
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-sm text-slate-600">
-                  {activeSession?.state === "running"
-                    ? "Follow-up prompts continue this session."
-                    : activeSession?.state === "exited"
-                      ? "This session has exited. Its scrollback remains available until you dismiss it."
-                      : `Your first prompt starts ${selectedAgent.label}.`}
-                </p>
-                <button
-                  type="submit"
-                  disabled={newSession || !activeSession ? !canStart : !canSend}
-                  className="h-11 rounded-xl bg-sky-700 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-800 focus:outline-none focus:ring-3 focus:ring-sky-200 disabled:cursor-not-allowed disabled:bg-slate-300"
-                >
-                  {isCreating ? `Starting ${selectedAgent.label}…` : activeSession?.state === "running" ? "Send prompt" : `Start ${selectedAgent.label}`}
-                </button>
-              </div>
-            </form>
-
             {error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>}
 
             {execution && execution.prompt !== "hidden" && (
@@ -448,18 +446,64 @@ export function AgentConsole() {
               />
             )}
 
-            <div className="overflow-hidden rounded-[14px] border border-slate-800 bg-[#0b1220] shadow-[0_16px_36px_rgba(15,23,42,0.16)]">
-              <div className="flex items-center justify-between border-b border-slate-700 px-4 py-2.5 text-xs text-slate-300">
-                <span>{activeAgent ? `${activeAgent.label} terminal` : "Agent terminal"}</span>
-                <span>{activeSession?.state ?? "Ready for a new session"}</span>
+            <div className="space-y-3">
+              <div className="overflow-hidden rounded-[14px] border border-slate-800 bg-[#0b1220] shadow-[0_16px_36px_rgba(15,23,42,0.16)]">
+                <div className="flex items-center justify-between border-b border-slate-700 px-4 py-2.5 text-xs text-slate-300">
+                  <span>{activeAgent ? `${activeAgent.label} terminal` : "Agent terminal"}</span>
+                  <span>{activeSession?.state ?? "Ready for a new session"}</span>
+                </div>
+                <SessionTerminal
+                  hostRef={terminalHostRef}
+                  terminalRef={terminalRef}
+                  onInput={onTerminalInput}
+                  onResize={onTerminalResize}
+                  onReady={onTerminalReady}
+                />
               </div>
-              <SessionTerminal
-                hostRef={terminalHostRef}
-                terminalRef={terminalRef}
-                onInput={onTerminalInput}
-                onResize={onTerminalResize}
-                onReady={onTerminalReady}
-              />
+
+              <button
+                type="button"
+                aria-expanded={isPromptVisible}
+                aria-controls="prompt-form"
+                onClick={togglePromptVisibility}
+                className="h-10 rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-800 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-3 focus:ring-sky-100"
+              >
+                {isPromptVisible ? "Hide prompt" : "Show prompt"}
+              </button>
+
+              <div id="prompt-form">
+                {isPromptVisible && (
+                  <form onSubmit={submitPrompt} className="flex flex-col gap-3">
+                    <label className="text-sm font-medium text-slate-800" htmlFor="prompt">Prompt</label>
+                    <textarea
+                      ref={promptTextareaRef}
+                      id="prompt"
+                      value={prompt}
+                      onChange={(event) => setPrompt(event.target.value)}
+                      rows={4}
+                      disabled={Boolean(activeSession && activeSession.state === "exited")}
+                      placeholder={activeAgent ? `Describe what you want ${activeAgent.label} to do…` : `Describe what you want ${selectedAgent.label} to do…`}
+                      className="w-full resize-y rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm leading-6 outline-none transition placeholder:text-slate-400 focus:border-sky-600 focus:ring-3 focus:ring-sky-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+                    />
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <p className="text-sm text-slate-600">
+                        {activeSession?.state === "running"
+                          ? "Follow-up prompts continue this session."
+                          : activeSession?.state === "exited"
+                            ? "This session has exited. Its scrollback remains available until you dismiss it."
+                            : `Your first prompt starts ${selectedAgent.label}.`}
+                      </p>
+                      <button
+                        type="submit"
+                        disabled={isNewSessionMode ? !canStart : !canSend}
+                        className="h-11 rounded-xl bg-sky-700 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-800 focus:outline-none focus:ring-3 focus:ring-sky-200 disabled:cursor-not-allowed disabled:bg-slate-300"
+                      >
+                        {isCreating ? `Starting ${selectedAgent.label}…` : activeSession?.state === "running" ? "Send prompt" : `Start ${selectedAgent.label}`}
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
             </div>
           </div>
         </div>

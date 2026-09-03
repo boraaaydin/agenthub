@@ -173,7 +173,7 @@ tasks in `.agent/tasks/` are archived by hand into
 
 ## Delivered session capabilities
 
-- Agent selection (Codex, Claude Code, or Pi) is available per new console session.
+- Agent selection (Codex, Claude Code, or Pi) is available per new console session. The prompt form appears below the terminal card and is hidden by default when a session is selected; it opens by default when starting a new session.
 - Multiple concurrent sessions can run, be selected from the console sidebar, and retain their
   individual in-memory scrollback until dismissed after exit.
 - Every project has a persisted task list with server-side URL pagination; project deletion can
