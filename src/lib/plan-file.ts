@@ -39,14 +39,14 @@ export async function readPlanFile(projectPath: string, filePath: string): Promi
   }
 
   try {
-    const stats = await fs.stat(/* turbopackIgnore: true */ resolvedFilePath);
+    const stats = await fs.stat(resolvedFilePath);
     if (!stats.isFile()) {
       return { status: "not-found" };
     }
     if (stats.size > PLAN_FILE_PREVIEW_MAX_BYTES) {
       return { status: "too-large" };
     }
-    return { status: "ok", content: await fs.readFile(/* turbopackIgnore: true */ resolvedFilePath, "utf8") };
+    return { status: "ok", content: await fs.readFile(resolvedFilePath, "utf8") };
   } catch (error) {
     if (isNotFoundError(error)) {
       return { status: "not-found" };
@@ -63,11 +63,11 @@ export async function deletePlanFile(projectPath: string, filePath: string): Pro
   }
 
   try {
-    const stats = await fs.lstat(/* turbopackIgnore: true */ resolvedFilePath);
+    const stats = await fs.lstat(resolvedFilePath);
     if (stats.isDirectory()) {
       return { status: "not-found" };
     }
-    await fs.unlink(/* turbopackIgnore: true */ resolvedFilePath);
+    await fs.unlink(resolvedFilePath);
     return { status: "deleted" };
   } catch (error) {
     if (isNotFoundError(error)) {
