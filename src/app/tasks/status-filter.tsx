@@ -32,6 +32,7 @@ export function StatusFilter({ projectId, selectedStatus }: StatusFilterProps) {
         onChange={(event) => changeStatus(event.target.value as TaskFilterStatus)}
         className="mt-2 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-sky-600 focus:ring-3 focus:ring-sky-100"
       >
+        <option value="active">Active</option>
         <option value="all">All</option>
         {TASK_STATUSES.map((status) => (
           <option key={status} value={status}>{TASK_STATUS_LABELS[status]}</option>

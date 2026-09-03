@@ -33,10 +33,11 @@ export async function GET(
       return Response.json({ error: "Project not found." }, { status: 404 });
     }
 
+    const status = statusFromRequest(request);
     return Response.json(await listProjectTasks(id, {
       page: pageFromRequest(request),
       pageSize: TASKS_PAGE_SIZE,
-      status: statusFromRequest(request),
+      statuses: status ? [status] : undefined,
     }));
   } catch (error) {
     console.error("Unable to list project tasks", error);

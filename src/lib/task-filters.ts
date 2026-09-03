@@ -1,10 +1,14 @@
 export const TASK_STATUSES = ["open", "plan_created", "in_progress", "completed", "cancelled"] as const;
 
 export type TaskStatus = (typeof TASK_STATUSES)[number];
-export type TaskFilterStatus = TaskStatus | "all";
+export type TaskFilterStatus = TaskStatus | "all" | "active";
 
 export const DEFAULT_TASK_STATUS: TaskStatus = "open";
 export const TERMINAL_TASK_STATUSES = ["completed", "cancelled"] as const;
+export const ACTIVE_TASK_STATUSES = TASK_STATUSES.filter(
+  (status) => !TERMINAL_TASK_STATUSES.includes(status as (typeof TERMINAL_TASK_STATUSES)[number]),
+);
+export const DEFAULT_TASK_FILTER_STATUS: TaskFilterStatus = "active";
 
 export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
   open: "Open",
@@ -38,7 +42,7 @@ export function taskFilterStatus(value: string | undefined, showAll?: string): T
   if (showAll === "true") {
     return "all";
   }
-  return isTaskStatus(value) ? value : DEFAULT_TASK_STATUS;
+  return isTaskStatus(value) ? value : DEFAULT_TASK_FILTER_STATUS;
 }
 
 type TasksHrefInput = {
@@ -54,7 +58,7 @@ export function tasksHref({ projectId, status, page }: TasksHrefInput): string {
   }
   if (status === "all") {
     searchParams.set("all", "true");
-  } else if (status) {
+  } else if (status && status !== DEFAULT_TASK_FILTER_STATUS) {
     searchParams.set("status", status);
   }
   if (page !== undefined) {
@@ -72,7 +76,7 @@ export function newTaskHref({ projectId, status }: Omit<TasksHrefInput, "page">)
   }
   if (status === "all") {
     searchParams.set("all", "true");
-  } else if (status) {
+  } else if (status && status !== DEFAULT_TASK_FILTER_STATUS) {
     searchParams.set("status", status);
   }
 

@@ -13,6 +13,7 @@ import {
   type Task,
 } from "@/lib/tasks-store";
 import {
+  ACTIVE_TASK_STATUSES,
   newTaskHref,
   taskFilterStatus,
   taskStatusBadgeClass,
@@ -154,7 +155,11 @@ export default async function TasksPage(props: PageProps<"/tasks">) {
       page,
       pageSize: TASKS_PAGE_SIZE,
       projectId: selectedProjectId || undefined,
-      status: selectedStatus === "all" ? undefined : selectedStatus,
+      statuses: selectedStatus === "all"
+        ? undefined
+        : selectedStatus === "active"
+          ? ACTIVE_TASK_STATUSES
+          : [selectedStatus],
     });
     hasAnyTasks = (await listAllTasks({ page: 1, pageSize: 1 })).total > 0;
   } catch (caughtError) {
@@ -175,7 +180,9 @@ export default async function TasksPage(props: PageProps<"/tasks">) {
   const filteredNewTaskHref = newTaskHref({ projectId: selectedProjectId, status: selectedStatus });
   const emptyTaskLabel = selectedStatus === "all"
     ? "No tasks"
-    : `No ${TASK_STATUS_LABELS[selectedStatus].toLowerCase()} tasks`;
+    : selectedStatus === "active"
+      ? "No active tasks"
+      : `No ${TASK_STATUS_LABELS[selectedStatus].toLowerCase()} tasks`;
 
   return (
     <main className="min-h-screen bg-[#f4f6fa] px-4 py-6 text-slate-900 sm:px-6 sm:py-10">

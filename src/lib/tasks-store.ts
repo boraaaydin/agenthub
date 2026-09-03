@@ -193,13 +193,13 @@ function normalizePageSize(pageSize: number): number {
 
 function paginateTasks(
   tasks: Task[],
-  { page, pageSize, projectId, status }: PaginationInput & { projectId?: string; status?: TaskStatus },
+  { page, pageSize, projectId, statuses }: PaginationInput & { projectId?: string; statuses?: readonly TaskStatus[] },
 ): PaginatedTasks {
   const normalizedPage = normalizePage(page);
   const normalizedPageSize = normalizePageSize(pageSize);
   const filteredTasks = tasks
     .filter((task) => projectId === undefined || task.projectId === projectId)
-    .filter((task) => status === undefined || task.status === status)
+    .filter((task) => statuses === undefined || statuses.includes(task.status))
     .sort((first, second) => second.createdAt.localeCompare(first.createdAt));
   const total = filteredTasks.length;
 
@@ -214,17 +214,17 @@ function paginateTasks(
 
 export async function listProjectTasks(
   projectId: string,
-  { page, pageSize, status }: PaginationInput & { status?: TaskStatus },
+  { page, pageSize, statuses }: PaginationInput & { statuses?: readonly TaskStatus[] },
 ): Promise<PaginatedTasks> {
   const { tasks } = await readDocument();
-  return paginateTasks(tasks.map(normalizeTask), { page, pageSize, projectId, status });
+  return paginateTasks(tasks.map(normalizeTask), { page, pageSize, projectId, statuses });
 }
 
 export async function listAllTasks(
-  { page, pageSize, projectId, status }: PaginationInput & { projectId?: string; status?: TaskStatus },
+  { page, pageSize, projectId, statuses }: PaginationInput & { projectId?: string; statuses?: readonly TaskStatus[] },
 ): Promise<PaginatedTasks> {
   const { tasks } = await readDocument();
-  return paginateTasks(tasks.map(normalizeTask), { page, pageSize, projectId, status });
+  return paginateTasks(tasks.map(normalizeTask), { page, pageSize, projectId, statuses });
 }
 
 export async function listTasksByStatuses(statuses: readonly TaskStatus[]): Promise<Task[]> {
