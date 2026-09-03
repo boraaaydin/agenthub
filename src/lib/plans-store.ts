@@ -3,6 +3,16 @@ import "server-only";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 
+import {
+  DEFAULT_PLAN_STATUS,
+  isPlanStatus,
+  PLAN_STATUSES as PLAN_STATUS_VALUES,
+  type PlanStatus,
+} from "./plan-filters";
+
+export type { PlanStatus } from "./plan-filters";
+export const PLAN_STATUSES = PLAN_STATUS_VALUES;
+
 export type Plan = {
   id: number;
   projectId: string;
@@ -10,11 +20,13 @@ export type Plan = {
   title: string;
   filePath: string;
   summary: string;
+  status: PlanStatus;
   createdAt: string;
   updatedAt: string;
 };
 
-type StoredPlan = Omit<Plan, "updatedAt"> & {
+type StoredPlan = Omit<Plan, "status" | "updatedAt"> & {
+  status?: PlanStatus;
   updatedAt?: string;
 };
 
@@ -65,6 +77,7 @@ function isPlan(value: unknown): value is StoredPlan {
     typeof plan.filePath === "string" &&
     Boolean(plan.filePath.trim()) &&
     typeof plan.summary === "string" &&
+    (plan.status === undefined || isPlanStatus(plan.status)) &&
     typeof plan.createdAt === "string" &&
     (plan.updatedAt === undefined || typeof plan.updatedAt === "string")
   );
@@ -73,6 +86,7 @@ function isPlan(value: unknown): value is StoredPlan {
 function normalizePlan(plan: StoredPlan): Plan {
   return {
     ...plan,
+    status: plan.status ?? DEFAULT_PLAN_STATUS,
     updatedAt: plan.updatedAt ?? plan.createdAt,
   };
 }
@@ -125,7 +139,7 @@ function serializeWrite<T>(operation: () => Promise<T>): Promise<T> {
   return result;
 }
 
-function planDetails(input: unknown): Omit<Plan, "id" | "createdAt" | "updatedAt"> {
+function planDetails(input: unknown): Omit<Plan, "id" | "status" | "createdAt" | "updatedAt"> {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
     throw new PlanValidationError("Plan details are required.");
   }
@@ -162,7 +176,7 @@ function planDetails(input: unknown): Omit<Plan, "id" | "createdAt" | "updatedAt
   };
 }
 
-export type PlanPatch = Partial<Pick<Plan, "projectId" | "taskId" | "title" | "filePath" | "summary">>;
+export type PlanPatch = Partial<Pick<Plan, "projectId" | "taskId" | "title" | "filePath" | "summary" | "status">>;
 
 export function planPatch(input: unknown): PlanPatch {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
@@ -207,6 +221,12 @@ export function planPatch(input: unknown): PlanPatch {
     }
     patch.summary = values.summary;
   }
+  if (Object.hasOwn(values, "status")) {
+    if (!isPlanStatus(values.status)) {
+      throw new PlanValidationError("Select a valid plan status.");
+    }
+    patch.status = values.status;
+  }
 
   if (Object.keys(patch).length === 0) {
     throw new PlanValidationError("Provide at least one plan field.");
@@ -232,6 +252,7 @@ export async function createPlan(input: unknown): Promise<Plan> {
     const plan: Plan = {
       id: document.plans.reduce((highest, candidate) => Math.max(highest, candidate.id), 0) + 1,
       ...details,
+      status: DEFAULT_PLAN_STATUS,
       createdAt: now,
       updatedAt: now,
     };

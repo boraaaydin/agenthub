@@ -4,7 +4,13 @@ import { BrandBar } from "../brand-bar";
 import { ProjectChip, UnknownProjectChip } from "../project-chip";
 import { ProjectFilter } from "./project-filter";
 import { listProjects, ProjectStoreError } from "@/lib/projects-store";
-import { newPlanHref, planDetailHref, plansHref } from "@/lib/plan-filters";
+import {
+  newPlanHref,
+  planDetailHref,
+  planStatusBadgeClass,
+  planStatusLabel,
+  plansHref,
+} from "@/lib/plan-filters";
 import { listAllPlans, PlanStoreError, PLANS_PAGE_SIZE, type Plan } from "@/lib/plans-store";
 import { taskConsoleHref } from "@/lib/task-run";
 
@@ -28,6 +34,9 @@ function PlanRows({ plans, projectNames }: { plans: Plan[]; projectNames: Map<st
                     <ProjectChip projectId={plan.projectId} name={project.name} color={project.color} />
                   ) : <UnknownProjectChip />}
                   <span className="shrink-0 text-sm font-medium tabular-nums text-slate-500">#{plan.id}</span>
+                  <span className={`inline-block rounded-md px-2 py-0.5 text-xs font-medium ${planStatusBadgeClass(plan.status)}`}>
+                    {planStatusLabel(plan.status)}
+                  </span>
                   <h2 className="min-w-0 break-words font-medium text-slate-900">
                     <Link href={planDetailHref(plan.id)} className="transition hover:text-sky-800 focus:outline-none focus:ring-3 focus:ring-sky-100">
                       {plan.title}
@@ -54,10 +63,10 @@ function PlanRows({ plans, projectNames }: { plans: Plan[]; projectNames: Map<st
                     href={taskConsoleHref(plan.id)}
                     className="font-medium text-sky-700 transition hover:text-sky-900 focus:outline-none focus:ring-3 focus:ring-sky-100"
                   >
-                    Execute task
+                    Execute plan
                   </Link>
                 ) : (
-                  <span aria-disabled="true" className="text-slate-400">Execute task</span>
+                  <span aria-disabled="true" className="text-slate-400">Execute plan</span>
                 )}
               </div>
             </li>

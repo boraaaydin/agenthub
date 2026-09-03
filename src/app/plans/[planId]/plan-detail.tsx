@@ -8,6 +8,7 @@ import { BrandBar } from "../../brand-bar";
 import { ProjectChip, UnknownProjectChip } from "../../project-chip";
 import { DeletePlanSection } from "./delete-plan-section";
 import { PlanFilePreview } from "./plan-file-preview";
+import { planStatusBadgeClass, planStatusLabel, type PlanStatus } from "@/lib/plan-filters";
 
 type Plan = {
   id: number;
@@ -16,6 +17,7 @@ type Plan = {
   title: string;
   filePath: string;
   summary: string;
+  status: PlanStatus;
   createdAt: string;
   updatedAt: string;
 };
@@ -139,6 +141,9 @@ export default function PlanDetail({ plan, projects, tasksByProject, taskExists,
           <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
             <Link href="/plans" className="font-medium text-sky-700 transition hover:text-sky-900 focus:outline-none focus:ring-3 focus:ring-sky-100">Plans</Link>
             <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">Plan #{currentPlan.id}</span>
+            <span className={`rounded-md px-2 py-0.5 text-xs font-medium ${planStatusBadgeClass(currentPlan.status)}`}>
+              {planStatusLabel(currentPlan.status)}
+            </span>
           </div>
           <h1 className="mt-4 break-words text-3xl font-semibold tracking-[-0.03em]">{currentPlan.title}</h1>
           <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm text-slate-600">

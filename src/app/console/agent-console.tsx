@@ -9,9 +9,11 @@ import { BrandBar } from "../brand-bar";
 import { AGENTS, DEFAULT_AGENT_ID, getAgent, type AgentId } from "@/lib/agents";
 import type { ClientMessage, SessionSummary } from "@/lib/agent-protocol";
 import { terminalSubmission } from "@/lib/terminal-input";
+import { PlanClosePrompt } from "./plan-close-prompt";
 import { SessionSidebar } from "./session-sidebar";
 import { SessionTerminal } from "./session-terminal";
 import { useAgentSocket } from "./use-agent-socket";
+import { usePlanExecution } from "./use-plan-execution";
 import { usePlanRun } from "./use-plan-run";
 import { useTaskRun } from "./use-task-run";
 
@@ -52,6 +54,14 @@ export function AgentConsole() {
   const initialPlanTaskIdRef = useRef(searchParams.get("planTaskId"));
   const initialTaskPlanIdRef = useRef(searchParams.get("taskPlanId"));
   const sendRef = useRef<(message: ClientMessage) => boolean>(sendPlaceholder);
+  const {
+    beginExecution,
+    claimSession,
+    confirmClose,
+    dismissPrompt,
+    execution,
+    handleSessionExit,
+  } = usePlanExecution({ setError });
 
   const onSessions = useCallback((nextSessions: SessionSummary[]) => {
     if (!selectionInitializedRef.current) {
@@ -95,18 +105,20 @@ export function AgentConsole() {
   }, []);
 
   const onStarted = useCallback((session: SessionSummary) => {
+    claimSession(session.id);
     pendingSessionIdRef.current = session.id;
     activeSessionRef.current = session.id;
     setIsCreating(false);
     setNewSession(false);
     setSelectedSessionId(session.id);
-  }, []);
+  }, [claimSession]);
 
   const onExit = useCallback((sessionId: string, code: number) => {
+    handleSessionExit(sessionId);
     if (activeSessionRef.current === sessionId && attachedSessionRef.current === sessionId) {
       terminalRef.current?.write(`\r\n\x1b[33mSession exited with code ${code}.\x1b[0m\r\n`);
     }
-  }, []);
+  }, [handleSessionExit]);
 
   const onError = useCallback((message: string) => {
     setIsCreating(false);
@@ -242,7 +254,11 @@ export function AgentConsole() {
 
   function dismissSession(sessionId: string) {
     setError("");
-    send({ type: "dismiss", sessionId });
+    return send({ type: "dismiss", sessionId });
+  }
+
+  function dismissExitedExecution(sessionId: string) {
+    return send({ type: "dismiss", sessionId });
   }
 
   function stopSession() {
@@ -301,6 +317,7 @@ export function AgentConsole() {
     setSelectedProjectId,
     setError,
     startSession,
+    beginExecution,
   });
 
   return (
@@ -419,6 +436,17 @@ export function AgentConsole() {
             </form>
 
             {error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>}
+
+            {execution && execution.prompt !== "hidden" && (
+              <PlanClosePrompt
+                planId={execution.planId}
+                taskId={execution.taskId}
+                isClosing={execution.isClosing}
+                isClosed={execution.prompt === "success"}
+                onConfirm={() => { void confirmClose(dismissExitedExecution); }}
+                onDismiss={dismissPrompt}
+              />
+            )}
 
             <div className="overflow-hidden rounded-[14px] border border-slate-800 bg-[#0b1220] shadow-[0_16px_36px_rgba(15,23,42,0.16)]">
               <div className="flex items-center justify-between border-b border-slate-700 px-4 py-2.5 text-xs text-slate-300">

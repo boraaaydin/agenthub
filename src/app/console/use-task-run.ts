@@ -34,6 +34,7 @@ type UseTaskRunOptions = {
   setSelectedProjectId: (projectId: string) => void;
   setError: (message: string) => void;
   startSession: (agent: AgentId, project: ConsoleProject, prompt: string, autoClose?: boolean) => boolean;
+  beginExecution: (execution: { planId: number; projectId: string; taskId: number }) => void;
 };
 
 function isTaskPromptResponse(value: unknown): value is TaskPromptResponse {
@@ -70,6 +71,7 @@ export function useTaskRun({
   setSelectedProjectId,
   setError,
   startSession,
+  beginExecution,
 }: UseTaskRunOptions) {
   const router = useRouter();
   const taskRunStartedRef = useRef(false);
@@ -113,6 +115,7 @@ export function useTaskRun({
         if (!startSession(body.agent, project, body.prompt, false)) {
           throw new Error("The terminal connection is not ready. Try again in a moment.");
         }
+        beginExecution({ planId: body.planId, projectId: body.projectId, taskId: body.taskId });
         router.replace("/console");
       } catch (error) {
         if (!controller.signal.aborted) {
@@ -124,6 +127,7 @@ export function useTaskRun({
     void runTask();
     return () => controller.abort();
   }, [
+    beginExecution,
     connected,
     isLoadingProjects,
     planIdRef,
