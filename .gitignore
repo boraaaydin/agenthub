@@ -43,4 +43,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# .agent/tasks-archived/
+# AgentHub plan files
+/.agent/plans/
+/.agent/plans-archived/

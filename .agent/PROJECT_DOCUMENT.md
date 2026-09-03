@@ -152,28 +152,30 @@ data/                             # Runtime JSON database (git-ignored: projects
 .agent/
 ├── PROJECT_DOCUMENT.md          # this file
 ├── commands/tasks/              # plan, do-task, do-task-post, common-plan-doc
-├── scripts/archive-task.sh      # moves a finished task into tasks-archived/
-├── tasks/                       # active task files
-└── tasks-archived/              # completed tasks, kept as a decision log
+├── scripts/archive-task.sh      # legacy slash-command archiver
+├── plans/                       # active AgentHub plan files (git-ignored)
+├── plans-archived/              # completed AgentHub plan files (git-ignored)
+└── tasks-archived/              # legacy completed tasks, kept as a decision log
 ```
 
 ## Task Workflow
 
-Work is planned into task files before it is implemented — spec first, then code.
+Work is planned into plan files before it is implemented — spec first, then code.
 
-1. **Plan** — `.agent/commands/tasks/plan.md` writes a self-contained task file under
-   `.agent/tasks/`. Planning never changes source code.
-2. **Execute** — `.agent/commands/tasks/do-task.md` runs a task file, a GitHub issue number,
-   or a direct prompt, verifying against `pnpm build` / `pnpm lint`.
-3. **Close out** — `.agent/commands/tasks/do-task-post.md` archives the task, comments on the
-   related GitHub issue, audits touched files against the 600-line rule, and suggests commit
-   messages.
+1. **Plan** — AgentHub's planning flow writes a self-contained plan file under
+   `.agent/plans/` as `{PROJECT_SLUG}#{TASK_ID}-{descriptive-kebab-case-name}.md` (for example,
+   `agenthub-project#26-plan-files-in-plans-directory-with-task-id.md`). It creates the
+   directory when needed; the directory is git-ignored. Planning never changes source code.
+2. **Execute** — AgentHub's task flow runs a plan file or direct prompt, verifying against
+   `pnpm build` / `pnpm lint`.
+3. **Close out** — successful plan files move to
+   `.agent/plans-archived/{YYYY}/{MM}/{DD}/` with an `{HHMM}_` prefix. This directory is also
+   git-ignored; `.agent/tasks-archived/` remains the tracked legacy decision log.
 
-Task-file prose, plan titles, and plan summaries are written in the language inferred from the task title and detail, unless the task explicitly requests another language. Markdown section headings, the `Root application` line, lowercase kebab-case English file names, file paths, commands, and code identifiers remain in English.
+Plan-file prose, plan titles, and plan summaries are written in the language inferred from the task title and detail, unless the task explicitly requests another language. Markdown section headings, the `Root application` line, lowercase kebab-case English file names, file paths, commands, and code identifiers remain in English.
 
-Note: `archive-task.sh` expects an `apps/{APP_NAME}/...` path and refuses anything else, so
-tasks in `.agent/tasks/` are archived by hand into
-`.agent/tasks-archived/{YYYY}/{MM}/{DD}/`.
+Note: `archive-task.sh` is a separate legacy slash-command helper: it expects an
+`apps/{APP_NAME}/...` path and does not manage AgentHub plan files.
 
 ## Delivered session capabilities
 
