@@ -1,4 +1,4 @@
-export const TASK_STATUSES = ["open", "plan_created", "in_progress", "completed", "cancelled"] as const;
+export const TASK_STATUSES = ["open", "plan_creating", "plan_created", "in_progress", "completed", "cancelled"] as const;
 
 export type TaskStatus = (typeof TASK_STATUSES)[number];
 export type TaskFilterStatus = TaskStatus | "all" | "active";
@@ -12,6 +12,7 @@ export const DEFAULT_TASK_FILTER_STATUS: TaskFilterStatus = "active";
 
 export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
   open: "Open",
+  plan_creating: "Plan creating",
   plan_created: "Plan created",
   in_progress: "In progress",
   completed: "Completed",
@@ -20,6 +21,7 @@ export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
 
 const TASK_STATUS_BADGE_CLASSES: Record<TaskStatus, string> = {
   open: "bg-slate-100 text-slate-600",
+  plan_creating: "bg-amber-100 text-amber-800",
   plan_created: "bg-violet-100 text-violet-800",
   in_progress: "bg-sky-100 text-sky-800",
   completed: "bg-emerald-100 text-emerald-800",

@@ -9,6 +9,7 @@ import {
   TASK_STATUSES as TASK_STATUS_VALUES,
   type TaskStatus,
 } from "./task-filters";
+import { publishTaskChange } from "./task-events";
 
 export type { TaskStatus } from "./task-filters";
 export const TASK_STATUSES = TASK_STATUS_VALUES;
@@ -285,7 +286,13 @@ export async function updateTask(projectId: string, taskId: number, input: unkno
     }
     task.updatedAt = new Date().toISOString();
     await writeDocument(document);
-    return normalizeTask(task);
+    const updatedTask = normalizeTask(task);
+    publishTaskChange({
+      projectId: updatedTask.projectId,
+      taskId: updatedTask.id,
+      status: updatedTask.status,
+    });
+    return updatedTask;
   });
 }
 

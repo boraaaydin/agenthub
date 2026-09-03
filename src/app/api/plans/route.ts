@@ -85,7 +85,7 @@ export async function POST(request: Request) {
 
     try {
       const task = await getTask(project.id, plan.taskId);
-      if (task?.status === "open" || task?.status === "in_progress") {
+      if (task?.status === "open" || task?.status === "plan_creating" || task?.status === "in_progress") {
         await updateTask(project.id, plan.taskId, { status: "plan_created" });
       }
     } catch (error) {

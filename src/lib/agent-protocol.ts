@@ -1,4 +1,5 @@
 import { isAgentId, type AgentId } from "./agents";
+import type { TaskStatus } from "./task-filters";
 
 export type SessionState = "starting" | "running" | "exited";
 
@@ -40,6 +41,7 @@ export type ServerMessage =
   | { type: "scrollback"; sessionId: string; data: string }
   | { type: "output"; sessionId: string; data: string }
   | { type: "exit"; sessionId: string; code: number }
+  | { type: "task-changed"; projectId: string; taskId: number; status: TaskStatus }
   | { type: "error"; message: string; sessionId?: string };
 
 const isDimension = (value: unknown, maximum: number) =>
