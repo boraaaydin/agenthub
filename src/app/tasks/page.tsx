@@ -22,84 +22,89 @@ import { planConsoleHref } from "@/lib/task-plan";
 
 export const dynamic = "force-dynamic";
 
-function taskPreview(detail: string): string {
-  const normalized = detail.replace(/\s+/g, " ").trim();
-  if (!normalized) {
-    return "No detail provided.";
-  }
-  return normalized.length > 160 ? `${normalized.slice(0, 157)}…` : normalized;
-}
-
 function taskDate(value: string): string {
   return new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(value));
 }
 
+const statusBadgeClasses: Record<Task["status"], string> = {
+  open: "bg-slate-100 text-slate-600",
+  plan_created: "bg-violet-100 text-violet-800",
+  in_progress: "bg-sky-100 text-sky-800",
+  completed: "bg-emerald-100 text-emerald-800",
+  cancelled: "bg-slate-200 text-slate-700",
+};
+
 function statusBadgeClass(status: Task["status"]): string {
-  return status === "completed"
-    ? "bg-emerald-100 text-emerald-800"
-    : status === "in_progress"
-      ? "bg-sky-100 text-sky-800"
-      : status === "cancelled"
-        ? "bg-slate-200 text-slate-700"
-        : "bg-slate-100 text-slate-600";
+  return statusBadgeClasses[status];
 }
 
 function TaskRows({ projectNames, tasks }: { projectNames: Map<string, { name: string; color?: string }>; tasks: Task[] }) {
   return (
-    <section aria-label="All tasks" className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-      <ul className="divide-y divide-slate-200">
-        {tasks.map((task) => {
-          const project = projectNames.get(task.projectId);
-          const row = (
-            <>
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-baseline sm:justify-between sm:gap-5">
-                <div className="flex min-w-0 flex-wrap items-baseline gap-2">
-                  {project ? (
-                    <ProjectChip projectId={task.projectId} name={project.name} color={project.color} />
-                  ) : <UnknownProjectChip />}
-                  <span className={`shrink-0 rounded-md px-2 py-0.5 text-xs font-medium ${statusBadgeClass(task.status)}`}>
-                    {TASK_STATUS_LABELS[task.status]}
-                  </span>
-                  <span className="shrink-0 text-sm font-medium tabular-nums text-slate-500">#{task.id}</span>
-                  <h2 className={`min-w-0 break-words font-medium ${task.status === "completed" ? "text-slate-500" : "text-slate-900"}`}>
-                    {task.title}
-                  </h2>
-                </div>
-                <time className="shrink-0 text-sm text-slate-500" dateTime={task.createdAt}>
-                  {taskDate(task.createdAt)}
-                </time>
-              </div>
-              <p className="mt-1.5 max-w-3xl text-sm leading-6 text-slate-600">{taskPreview(task.detail)}</p>
-            </>
-          );
+    <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-x-auto">
+        <table aria-label="All tasks" className="w-full min-w-[760px] border-collapse text-left text-sm">
+          <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
+            <tr>
+              <th scope="col" className="px-4 py-3 sm:px-5">Project</th>
+              <th scope="col" className="px-4 py-3 text-right sm:px-5">#</th>
+              <th scope="col" className="min-w-56 px-4 py-3 sm:px-5">Title</th>
+              <th scope="col" className="px-4 py-3 sm:px-5">Status</th>
+              <th scope="col" className="px-4 py-3 whitespace-nowrap sm:px-5">Created</th>
+              <th scope="col" className="px-4 py-3 sm:px-5">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-200">
+            {tasks.map((task) => {
+              const project = projectNames.get(task.projectId);
+              const titleClass = `break-words font-medium ${task.status === "completed" ? "text-slate-500" : "text-slate-900"}`;
 
-          return (
-            <li key={task.id} className="relative">
-              {project ? (
-                <>
-                  <Link
-                    href={`/projects/${task.projectId}/tasks/${task.id}`}
-                    className="block px-4 py-4 transition hover:bg-slate-50 focus:outline-none focus:ring-3 focus:ring-inset focus:ring-sky-100 after:absolute after:inset-0 sm:px-5 sm:pr-60"
-                  >
-                    {row}
-                  </Link>
-                  <div className="relative z-10 flex flex-wrap gap-2 px-4 pb-4 sm:absolute sm:right-5 sm:top-4 sm:px-0 sm:pb-0">
-                    <TaskStatusButton projectId={task.projectId} taskId={task.id} status={task.status} />
-                    <Link
-                      href={planConsoleHref(task.projectId, task.id)}
-                      className="inline-flex h-9 items-center rounded-lg border border-sky-200 bg-white px-3 text-sm font-medium text-sky-800 shadow-sm transition hover:border-sky-300 hover:bg-sky-50 focus:outline-none focus:ring-3 focus:ring-sky-100"
-                    >
-                      Create plan
-                    </Link>
-                  </div>
-                </>
-              ) : (
-                <div className="px-4 py-4 sm:px-5">{row}</div>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+              return (
+                <tr key={task.id} className="transition-colors hover:bg-slate-50">
+                  <td className="px-4 py-4 align-top sm:px-5">
+                    {project ? (
+                      <ProjectChip projectId={task.projectId} name={project.name} color={project.color} />
+                    ) : <UnknownProjectChip />}
+                  </td>
+                  <td className="px-4 py-4 text-right align-top font-medium tabular-nums text-slate-500 sm:px-5">#{task.id}</td>
+                  <td className="px-4 py-4 align-top sm:px-5">
+                    {project ? (
+                      <Link
+                        href={`/projects/${task.projectId}/tasks/${task.id}`}
+                        className={`${titleClass} transition hover:text-sky-800 focus:outline-none focus:ring-3 focus:ring-sky-100`}
+                      >
+                        {task.title}
+                      </Link>
+                    ) : (
+                      <span className={titleClass}>{task.title}</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-4 align-top sm:px-5">
+                    <span className={`inline-block rounded-md px-2 py-0.5 text-xs font-medium ${statusBadgeClass(task.status)}`}>
+                      {TASK_STATUS_LABELS[task.status]}
+                    </span>
+                  </td>
+                  <td className="px-4 py-4 align-top whitespace-nowrap text-slate-500 sm:px-5">
+                    <time dateTime={task.createdAt}>{taskDate(task.createdAt)}</time>
+                  </td>
+                  <td className="px-4 py-4 align-top sm:px-5">
+                    {project && (
+                      <div className="flex flex-wrap gap-2">
+                        <TaskStatusButton projectId={task.projectId} taskId={task.id} status={task.status} />
+                        <Link
+                          href={planConsoleHref(task.projectId, task.id)}
+                          className="inline-flex h-9 items-center rounded-lg border border-sky-200 bg-white px-3 text-sm font-medium text-sky-800 shadow-sm transition hover:border-sky-300 hover:bg-sky-50 focus:outline-none focus:ring-3 focus:ring-sky-100"
+                        >
+                          Create plan
+                        </Link>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </section>
   );
 }

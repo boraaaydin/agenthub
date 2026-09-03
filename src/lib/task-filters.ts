@@ -1,4 +1,4 @@
-export const TASK_STATUSES = ["open", "in_progress", "completed", "cancelled"] as const;
+export const TASK_STATUSES = ["open", "plan_created", "in_progress", "completed", "cancelled"] as const;
 
 export type TaskStatus = (typeof TASK_STATUSES)[number];
 export type TaskFilterStatus = TaskStatus | "all";
@@ -7,6 +7,7 @@ export const DEFAULT_TASK_STATUS: TaskStatus = "open";
 
 export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
   open: "Open",
+  plan_created: "Plan created",
   in_progress: "In progress",
   completed: "Completed",
   cancelled: "Cancelled",

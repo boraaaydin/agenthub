@@ -17,8 +17,8 @@ export function TaskStatusButton({ projectId, taskId, status }: TaskStatusButton
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const nextStatus = status === "open" ? "completed" : "open";
-  const label = status === "open" ? "Complete" : "Reopen";
+  const nextStatus = status === "completed" ? "open" : "completed";
+  const label = status === "completed" ? "Reopen" : "Complete";
 
   async function toggleStatus() {
     setError("");
@@ -45,7 +45,7 @@ export function TaskStatusButton({ projectId, taskId, status }: TaskStatusButton
     }
   }
 
-  if (status !== "open" && status !== "completed") {
+  if (status !== "open" && status !== "plan_created" && status !== "completed") {
     return null;
   }
 

@@ -6,7 +6,7 @@ import {
   PlanValidationError,
   PLANS_PAGE_SIZE,
 } from "@/lib/plans-store";
-import { getTask, TaskStoreError } from "@/lib/tasks-store";
+import { getTask, TaskStoreError, updateTask } from "@/lib/tasks-store";
 
 export const dynamic = "force-dynamic";
 
@@ -71,6 +71,16 @@ export async function POST(request: Request) {
     }
 
     const plan = await createPlan({ ...input, projectId: project.id });
+
+    try {
+      const task = await getTask(project.id, plan.taskId);
+      if (task?.status === "open" || task?.status === "in_progress") {
+        await updateTask(project.id, plan.taskId, { status: "plan_created" });
+      }
+    } catch (error) {
+      console.error("Unable to mark the task as planned", error);
+    }
+
     return Response.json(plan, { status: 201 });
   } catch (error) {
     if (error instanceof PlanValidationError) {
