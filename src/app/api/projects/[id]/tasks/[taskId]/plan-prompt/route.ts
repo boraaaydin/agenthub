@@ -75,6 +75,8 @@ export async function GET(
     prompt: composePlanPrompt({
       planPrompt,
       planPostPrompt,
+      projectName: project.name,
+      projectPath: project.path,
       projectId: project.id,
       taskId: task.id,
       taskTitle: task.title,

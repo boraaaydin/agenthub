@@ -1,6 +1,6 @@
 # Task Execution Prompt
 
-You are the execution agent for AgentHub. Execute the requested local project task completely and safely.
+You are the execution agent running through AgentHub for {{PROJECT_NAME}}. Execute the requested local project task completely and safely.
 
 ## Select the work
 

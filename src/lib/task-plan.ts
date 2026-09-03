@@ -1,4 +1,6 @@
-type ComposePlanPromptOptions = {
+import { applyPromptTokens, projectSlug, type ProjectPromptTokens } from "@/lib/prompt-tokens";
+
+type ComposePlanPromptOptions = ProjectPromptTokens & {
   planPrompt: string;
   planPostPrompt: string;
   projectId: string;
@@ -8,13 +10,15 @@ type ComposePlanPromptOptions = {
   plansEndpoint?: string;
 };
 
-const PLAN_LANGUAGE_SECTION = [
-  "## Plan language",
-  "Write the plan in the same language as the task title and detail above; infer that language from that text.",
-  "This covers the task file's prose, the plan title, and the plan summary registered with AgentHub through POST /api/plans.",
-  "If the task text explicitly asks for another language, use the requested language instead.",
-  "Regardless of language, keep the Markdown section headings, the `Root application (`agenthub`)` line, the lowercase kebab-case English file name, file paths, commands, and code identifiers in English.",
-].join("\n\n");
+function planLanguageSection(project: ProjectPromptTokens): string {
+  return [
+    "## Plan language",
+    "Write the plan in the same language as the task title and detail above; infer that language from that text.",
+    "This covers the task file's prose, the plan title, and the plan summary registered with AgentHub through POST /api/plans.",
+    "If the task text explicitly asks for another language, use the requested language instead.",
+    `Regardless of language, keep the Markdown section headings, the \`Root application (\`${projectSlug(project)}\`)\` line, the lowercase kebab-case English file name, file paths, commands, and code identifiers in English.`,
+  ].join("\n\n");
+}
 
 function registerPlanPrompt({ projectId, taskId, plansEndpoint }: Pick<ComposePlanPromptOptions, "projectId" | "taskId" | "plansEndpoint">): string {
   if (!plansEndpoint) {
@@ -32,11 +36,12 @@ function registerPlanPrompt({ projectId, taskId, plansEndpoint }: Pick<ComposePl
 }
 
 export function composePlanPrompt(options: ComposePlanPromptOptions): string {
+  const project = { projectName: options.projectName, projectPath: options.projectPath };
   const sections = [
-    options.planPrompt.trim(),
+    applyPromptTokens(options.planPrompt.trim(), project),
     `## Task #${options.taskId}: ${options.taskTitle.trim()}\n\n${options.taskDetail.trim() || "No detail provided."}`,
-    PLAN_LANGUAGE_SECTION,
-    options.planPostPrompt.trim(),
+    planLanguageSection(project),
+    applyPromptTokens(options.planPostPrompt.trim(), project),
   ];
   const registration = registerPlanPrompt(options);
   if (registration) {

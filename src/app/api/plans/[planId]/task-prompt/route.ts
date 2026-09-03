@@ -90,6 +90,8 @@ export async function GET(
     prompt: composeTaskPrompt({
       taskPrompt,
       taskPostPrompt,
+      projectName: project.name,
+      projectPath: project.path,
       planId: plan.id,
       taskId: plan.taskId,
       planTitle: plan.title,

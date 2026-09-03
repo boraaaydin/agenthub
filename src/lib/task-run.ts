@@ -1,4 +1,6 @@
-type ComposeTaskPromptOptions = {
+import { applyPromptTokens, type ProjectPromptTokens } from "@/lib/prompt-tokens";
+
+type ComposeTaskPromptOptions = ProjectPromptTokens & {
   taskPrompt: string;
   taskPostPrompt: string;
   planId: number;
@@ -23,10 +25,11 @@ function taskFileSection({ planId, taskId, planTitle, filePath, summary }: Omit<
 }
 
 export function composeTaskPrompt(options: ComposeTaskPromptOptions): string {
+  const project = { projectName: options.projectName, projectPath: options.projectPath };
   return [
-    options.taskPrompt.trim(),
+    applyPromptTokens(options.taskPrompt.trim(), project),
     taskFileSection(options),
-    options.taskPostPrompt.trim(),
+    applyPromptTokens(options.taskPostPrompt.trim(), project),
   ].join("\n\n---\n\n");
 }
 

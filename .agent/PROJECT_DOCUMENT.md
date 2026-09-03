@@ -61,7 +61,9 @@ the composed planning prompt ends by registering the finished task file through 
 Global Task and Plan agent defaults plus the four global task-flow prompts are
 persisted in git-ignored `data/settings.json`. When a prompt has no saved value, settings displays
 the matching built-in prompt from `src/lib/default-prompts/` in muted text; these defaults are read
-by the server-only `src/lib/default-settings-prompts.ts` module. The code-defined agent catalog lives in
+by the server-only `src/lib/default-settings-prompts.ts` module. Built-in and saved prompts may use
+`{{PROJECT_NAME}}` and `{{PROJECT_SLUG}}`, which are resolved for the session's project during prompt
+composition. The code-defined agent catalog lives in
 `src/lib/agents.ts` and the prompt descriptors live in `src/lib/settings-prompts.ts`. The console selects a saved project and its agent per new session (Codex
 by default), while the settings remain available for future task and plan flows. These files
 survive server restarts; agent sessions remain in-memory only and end when the server restarts.
@@ -134,6 +136,7 @@ src/lib/
 ├── agent-protocol.ts             # WebSocket session protocol shared by client and server
 ├── default-prompts/              # Built-in task-flow prompt Markdown files
 ├── default-settings-prompts.ts   # Server-only built-in prompt reader
+├── prompt-tokens.ts              # Client-safe project prompt token resolution
 ├── plans-store.ts                # Persisted editable plan records
 ├── plan-file.ts                  # Server-only safe plan file reader/deleter
 ├── project-colors.ts             # Client-safe palette tokens and deterministic project colors
@@ -162,7 +165,7 @@ Work is planned into task files before it is implemented — spec first, then co
    related GitHub issue, audits touched files against the 600-line rule, and suggests commit
    messages.
 
-Task-file prose, plan titles, and plan summaries are written in the language inferred from the task title and detail, unless the task explicitly requests another language. Markdown section headings, the `Root application (`agenthub`)` line, lowercase kebab-case English file names, file paths, commands, and code identifiers remain in English.
+Task-file prose, plan titles, and plan summaries are written in the language inferred from the task title and detail, unless the task explicitly requests another language. Markdown section headings, the `Root application` line, lowercase kebab-case English file names, file paths, commands, and code identifiers remain in English.
 
 Note: `archive-task.sh` expects an `apps/{APP_NAME}/...` path and refuses anything else, so
 tasks in `.agent/tasks/` are archived by hand into

@@ -56,6 +56,9 @@ export default function PromptForm({ field, value, defaultPrompt }: PromptFormPr
       <div>
         <h2 className="text-2xl font-semibold tracking-[-0.025em] text-slate-900">{prompt.title}</h2>
         <p id={helpId} className="mt-1 text-sm leading-6 text-slate-600">{prompt.description}</p>
+        <p className="mt-1 text-sm leading-6 text-slate-600">
+          Available tokens: <code>{"{{PROJECT_NAME}}"}</code> and <code>{"{{PROJECT_SLUG}}"}</code>; they are replaced when the prompt is composed.
+        </p>
         {isUsingDefault && (
           <p className="mt-3 text-sm leading-6 text-slate-600">
             The built-in default is shown below in muted text. Enter text to save a custom prompt.
