@@ -1,8 +1,15 @@
 export const PLAN_STATUSES = ["registered", "executing", "executed", "completed", "cancelled"] as const;
 
 export type PlanStatus = (typeof PLAN_STATUSES)[number];
+export type PlanFilterStatus = PlanStatus | "all" | "active";
+
+export const TERMINAL_PLAN_STATUSES = ["completed", "cancelled"] as const;
+export const ACTIVE_PLAN_STATUSES = PLAN_STATUSES.filter(
+  (status) => !TERMINAL_PLAN_STATUSES.includes(status as (typeof TERMINAL_PLAN_STATUSES)[number]),
+);
 
 export const DEFAULT_PLAN_STATUS: PlanStatus = "registered";
+export const DEFAULT_PLAN_FILTER_STATUS: PlanFilterStatus = "active";
 
 export const PLAN_STATUS_LABELS: Record<PlanStatus, string> = {
   registered: "Registered",
@@ -32,8 +39,16 @@ export function planStatusBadgeClass(status: PlanStatus): string {
   return PLAN_STATUS_BADGE_CLASSES[status];
 }
 
+export function planFilterStatus(value: string | undefined, showAll?: string): PlanFilterStatus {
+  if (showAll === "true") {
+    return "all";
+  }
+  return isPlanStatus(value) ? value : DEFAULT_PLAN_FILTER_STATUS;
+}
+
 type PlansHrefInput = {
   projectId?: string;
+  status?: PlanFilterStatus;
   page?: number;
 };
 
@@ -45,10 +60,15 @@ export function newPlanHref(projectId?: string): string {
   return projectId ? `/plans/new?project=${encodeURIComponent(projectId)}` : "/plans/new";
 }
 
-export function plansHref({ projectId, page }: PlansHrefInput): string {
+export function plansHref({ projectId, status, page }: PlansHrefInput): string {
   const searchParams = new URLSearchParams();
   if (projectId) {
     searchParams.set("project", projectId);
+  }
+  if (status === "all") {
+    searchParams.set("all", "true");
+  } else if (status && status !== DEFAULT_PLAN_FILTER_STATUS) {
+    searchParams.set("status", status);
   }
   if (page !== undefined) {
     searchParams.set("page", String(page));

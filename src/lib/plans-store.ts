@@ -42,6 +42,7 @@ type PaginationInput = {
   page: number;
   pageSize: number;
   projectId?: string;
+  statuses?: readonly PlanStatus[];
 };
 
 export type PaginatedPlans = {
@@ -311,13 +312,14 @@ export async function deletePlan(planId: number): Promise<Plan | null> {
   });
 }
 
-export async function listAllPlans({ page, pageSize, projectId }: PaginationInput): Promise<PaginatedPlans> {
+export async function listAllPlans({ page, pageSize, projectId, statuses }: PaginationInput): Promise<PaginatedPlans> {
   const { plans } = await readDocument();
   const normalizedPage = normalizePage(page);
   const normalizedPageSize = normalizePageSize(pageSize);
   const filteredPlans = plans
     .map(normalizePlan)
     .filter((plan) => projectId === undefined || plan.projectId === projectId)
+    .filter((plan) => statuses === undefined || statuses.includes(plan.status))
     .sort((first, second) => second.createdAt.localeCompare(first.createdAt));
   const total = filteredPlans.length;
 

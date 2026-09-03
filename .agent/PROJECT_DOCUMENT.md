@@ -55,7 +55,7 @@ starting at `1`, include a lifecycle status (`open`, `plan_created`, `in_progres
 server-side URL pagination and status filtering, and can be retained or removed when their
 project is deleted. Plan registrations are stored in git-ignored `data/plans.json`, with an id,
 projectId, taskId, title, filePath, summary, createdAt, and updatedAt; they can be created,
-edited (including project/task relinking), or deleted. Registering a plan automatically moves its `open` or `in_progress` task to `plan_created`; tasks already `plan_created`, `completed`, or `cancelled` are left unchanged. A plan's Markdown file is read from
+edited (including project/task relinking), or deleted. The `/plans` list defaults to active plans and supports project and status filters. Registering a plan automatically moves its `open` or `in_progress` task to `plan_created`; tasks already `plan_created`, `completed`, or `cancelled` are left unchanged. A plan's Markdown file is read from
 `{project.path}/{plan.filePath}` for display only and is removed only when explicitly requested;
 the composed planning prompt ends by registering the finished task file through `POST /api/plans`.
 Global Task and Plan agent defaults plus the four global task-flow prompts are
@@ -183,13 +183,13 @@ tasks in `.agent/tasks/` are archived by hand into
   to the agent CLI as a startup argument. Follow-up prompts are pasted into the running session.
   When its agent exits, the plan session closes and is removed automatically.
 - Plans carry a persisted execution status (`registered`, `executing`, `executed`, `completed`,
-  or `cancelled`). Their status can also be changed manually from the plan detail page. The
+  or `cancelled`); the `/plans` list defaults to active plans and supports project and status filters. Their status can also be changed manually from the plan detail page. The
   **Execute plan** action starts the configured Task agent with effective task
   execution/after-task prompts and advances the plan to `executing`. Execution sessions remain
   available with their scrollback after the agent exits; the console marks the plan `executed`
   and offers to complete the plan and its task.
 - A single `/tasks` screen provides a server-rendered, cross-project task table with pagination and optional project and status filters; it defaults to open tasks, which can be completed and reopened from the list or detail page. Plan registration moves open and in-progress tasks to Plan created, while already planned, completed, and cancelled tasks remain unchanged. `/tasks/new` creates tasks for any saved project. Per-project list and creation URLs redirect to these unified screens.
-- The `/plans` screen lists registered plans across projects with pagination and a project filter. Plans can be registered by hand, viewed and edited on a detail page, and deleted with optional removal of the plan file from disk. Every completed planning session automatically registers its final task file through `POST /api/plans` before its agent exits.
+- The `/plans` screen lists active plans across projects by default, with pagination plus project and status filters. Plans can be registered by hand, viewed and edited on a detail page, and deleted with optional removal of the plan file from disk. Every completed planning session automatically registers its final task file through `POST /api/plans` before its agent exits.
 - Projects are color-coded across project, task, and plan screens, with a palette color chosen on project create and detail forms.
 
 ## Agent Harness Configuration

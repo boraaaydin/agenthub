@@ -2,15 +2,20 @@
 
 import { useRouter } from "next/navigation";
 
-import { plansHref } from "@/lib/plan-filters";
+import { plansHref, type PlanFilterStatus } from "@/lib/plan-filters";
 
 type ProjectFilterProps = {
   projects: { id: string; name: string }[];
   selectedProjectId: string;
+  selectedStatus: PlanFilterStatus;
 };
 
-export function ProjectFilter({ projects, selectedProjectId }: ProjectFilterProps) {
+export function ProjectFilter({ projects, selectedProjectId, selectedStatus }: ProjectFilterProps) {
   const router = useRouter();
+
+  function changeProject(projectId: string) {
+    router.push(plansHref({ projectId, status: selectedStatus }));
+  }
 
   return (
     <div className="sm:max-w-xs">
@@ -18,7 +23,7 @@ export function ProjectFilter({ projects, selectedProjectId }: ProjectFilterProp
       <select
         id="plan-project-filter"
         value={selectedProjectId}
-        onChange={(event) => router.push(plansHref({ projectId: event.target.value }))}
+        onChange={(event) => changeProject(event.target.value)}
         className="mt-2 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-sky-600 focus:ring-3 focus:ring-sky-100"
       >
         <option value="">All projects</option>
