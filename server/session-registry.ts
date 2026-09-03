@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { spawn, type IPty } from "node-pty";
 
 import type { AgentId } from "../src/lib/agents";
-import type { SessionSummary } from "../src/lib/agent-protocol";
+import type { SessionExecution, SessionSummary } from "../src/lib/agent-protocol";
 import { getAgentCommand } from "./agents";
 
 const MAX_BUFFER_SIZE = 200 * 1024;
@@ -33,7 +33,14 @@ export class SessionRegistry {
 
   list(): SessionSummary[] {
     return [...this.sessions.values()]
-      .map(({ id, agent, cwd, state, createdAt }) => ({ id, agent, cwd, state, createdAt }))
+      .map(({ id, agent, cwd, state, createdAt, execution }) => ({
+        id,
+        agent,
+        cwd,
+        state,
+        createdAt,
+        ...(execution ? { execution } : {}),
+      }))
       .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
   }
 
@@ -44,6 +51,7 @@ export class SessionRegistry {
     rows: number,
     autoClose = false,
     initialPrompt?: string,
+    execution?: SessionExecution,
   ) {
     if (this.sessions.size >= MAX_SESSIONS) {
       throw new Error(`You can keep up to ${MAX_SESSIONS} sessions. Dismiss an exited session before starting another.`);
@@ -76,6 +84,7 @@ export class SessionRegistry {
       buffer: "",
       autoClose,
       stoppedByUser: false,
+      ...(execution ? { execution } : {}),
     };
 
     pty.onData((data) => {

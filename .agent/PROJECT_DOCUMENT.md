@@ -187,7 +187,7 @@ tasks in `.agent/tasks/` are archived by hand into
   **Execute plan** action starts the configured Task agent with effective task
   execution/after-task prompts and advances the plan to `executing`. Execution sessions remain
   available with their scrollback after the agent exits; the console marks the plan `executed`
-  and offers to complete the plan and its task.
+  and offers to complete the plan and its task. Execution sessions carry their plan, project, and task identifiers in the in-memory server session registry, so the console derives that close-out offer after reloads and in other browser tabs; a server restart removes this information together with the sessions.
 - A single `/tasks` screen provides a server-rendered, cross-project task table with pagination and optional project and status filters; it defaults to open tasks, which can be completed and reopened from the list or detail page. Plan registration moves open and in-progress tasks to Plan created, while already planned, completed, and cancelled tasks remain unchanged. `/tasks/new` creates tasks for any saved project. Per-project list and creation URLs redirect to these unified screens.
 - The `/plans` screen lists active plans across projects by default, with pagination plus project and status filters. Plans can be registered by hand, viewed and edited on a detail page, and deleted with optional removal of the plan file from disk. Every completed planning session automatically registers its final task file through `POST /api/plans` before its agent exits.
 - Projects are color-coded across project, task, and plan screens, with a palette color chosen on project create and detail forms.

@@ -81,6 +81,7 @@ async function handleClientMessage(socket: WebSocket, message: ClientMessage) {
           message.rows,
           message.autoClose,
           message.initialPrompt,
+          message.execution,
         );
         send(socket, { type: "started", session: toSummary(session) });
         broadcastSessions();
@@ -173,8 +174,8 @@ function sendUnknownSession(socket: WebSocket, sessionId: string) {
   });
 }
 
-function toSummary({ id, agent, cwd, state, createdAt }: { id: string; agent: SessionSummary["agent"]; cwd: string; state: SessionSummary["state"]; createdAt: string }): SessionSummary {
-  return { id, agent, cwd, state, createdAt };
+function toSummary({ id, agent, cwd, state, createdAt, execution }: SessionSummary): SessionSummary {
+  return { id, agent, cwd, state, createdAt, ...(execution ? { execution } : {}) };
 }
 
 function broadcastSessions() {

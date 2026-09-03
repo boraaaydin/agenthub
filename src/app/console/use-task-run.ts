@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, type RefObject } from "react";
 
 import { isAgentId, type AgentId } from "@/lib/agents";
+import type { SessionExecution } from "@/lib/agent-protocol";
 
 type ConsoleProject = {
   id: string;
@@ -33,8 +34,14 @@ type UseTaskRunOptions = {
   setAgent: (agent: AgentId) => void;
   setSelectedProjectId: (projectId: string) => void;
   setError: (message: string) => void;
-  startSession: (agent: AgentId, project: ConsoleProject, prompt: string, autoClose?: boolean) => boolean;
-  beginExecution: (execution: { planId: number; projectId: string; taskId: number }) => void;
+  startSession: (
+    agent: AgentId,
+    project: ConsoleProject,
+    prompt: string,
+    autoClose?: boolean,
+    execution?: SessionExecution,
+  ) => boolean;
+  beginExecution: (execution: SessionExecution) => void;
 };
 
 function isTaskPromptResponse(value: unknown): value is TaskPromptResponse {
@@ -110,12 +117,13 @@ export function useTaskRun({
           throw new Error("The plan's project is no longer available. Return to the plans list and try again.");
         }
 
+        const execution = { planId: body.planId, projectId: body.projectId, taskId: body.taskId };
         setSelectedProjectId(project.id);
         setAgent(body.agent);
-        if (!startSession(body.agent, project, body.prompt, false)) {
+        if (!startSession(body.agent, project, body.prompt, false, execution)) {
           throw new Error("The terminal connection is not ready. Try again in a moment.");
         }
-        beginExecution({ planId: body.planId, projectId: body.projectId, taskId: body.taskId });
+        beginExecution(execution);
         router.replace("/console");
       } catch (error) {
         if (!controller.signal.aborted) {

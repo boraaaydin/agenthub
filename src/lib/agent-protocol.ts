@@ -2,12 +2,19 @@ import { isAgentId, type AgentId } from "./agents";
 
 export type SessionState = "starting" | "running" | "exited";
 
+export type SessionExecution = {
+  planId: number;
+  projectId: string;
+  taskId: number;
+};
+
 export type SessionSummary = {
   id: string;
   agent: AgentId;
   cwd: string;
   state: SessionState;
   createdAt: string;
+  execution?: SessionExecution;
 };
 
 export type ClientMessage =
@@ -19,6 +26,7 @@ export type ClientMessage =
       rows: number;
       autoClose?: boolean;
       initialPrompt?: string;
+      execution?: SessionExecution;
     }
   | { type: "attach"; sessionId: string; cols: number; rows: number }
   | { type: "input"; sessionId: string; data: string }
@@ -43,6 +51,25 @@ const isDimension = (value: unknown, maximum: number) =>
 const isSessionId = (value: unknown) =>
   typeof value === "string" && /^[a-zA-Z0-9-]{1,100}$/.test(value);
 
+export function isSessionExecution(value: unknown): value is SessionExecution {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+
+  const execution = value as Record<string, unknown>;
+  return (
+    typeof execution.planId === "number" &&
+    Number.isInteger(execution.planId) &&
+    execution.planId > 0 &&
+    typeof execution.projectId === "string" &&
+    execution.projectId.trim().length > 0 &&
+    execution.projectId.length <= 200 &&
+    typeof execution.taskId === "number" &&
+    Number.isInteger(execution.taskId) &&
+    execution.taskId > 0
+  );
+}
+
 export function isClientMessage(value: unknown): value is ClientMessage {
   if (!value || typeof value !== "object" || !("type" in value)) {
     return false;
@@ -61,7 +88,8 @@ export function isClientMessage(value: unknown): value is ClientMessage {
         (message.initialPrompt === undefined ||
           (typeof message.initialPrompt === "string" &&
             message.initialPrompt.trim().length > 0 &&
-            message.initialPrompt.length <= 100_000))
+            message.initialPrompt.length <= 100_000)) &&
+        (message.execution === undefined || isSessionExecution(message.execution))
       );
     case "attach":
       return (
