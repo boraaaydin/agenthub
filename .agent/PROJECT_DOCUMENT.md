@@ -51,11 +51,11 @@ Node server  ──  node-pty  ──  claude / codex / pi CLI process
 
 Project metadata is persisted separately in a git-ignored `data/projects.json` file. Per-project
 tasks are persisted in git-ignored `data/tasks.json`, carry globally sequential integer ids
-starting at `1`, include a lifecycle status (`open`, `plan_created`, `in_progress`, `completed`, or `cancelled`) and optional completion timestamp, are listed in a semantic table with
+starting at `1`, include a lifecycle status (`open`, `plan_creating`, `plan_created`, `in_progress`, `completed`, or `cancelled`) and optional completion timestamp, are listed in a semantic table with
 server-side URL pagination and status filtering, and can be retained or removed when their
 project is deleted. Plan registrations are stored in git-ignored `data/plans.json`, with an id,
-projectId, taskId, title, filePath, summary, createdAt, and updatedAt; they can be created,
-edited (including project/task relinking), or deleted. The `/plans` list defaults to active plans and supports project and status filters. Registering a plan automatically moves its `open` or `in_progress` task to `plan_created`; tasks already `plan_created`, `completed`, or `cancelled` are left unchanged. A plan's Markdown file is read from
+projectId, taskId, title, filePath, summary, createdAt, and updatedAt; lifecycle events for newly created tasks and plans and actual status transitions are persisted independently in git-ignored `data/lifecycle-log.json`, with an event id, entity type/id, project id, previous and new status, and timestamp; they can be created,
+edited (including project/task relinking), or deleted. The `/plans` list defaults to active plans and supports project and status filters. Registering a plan automatically moves its `open`, `plan_creating`, or `in_progress` task to `plan_created`; tasks already `plan_created`, `completed`, or `cancelled` are left unchanged. A plan's Markdown file is read from
 `{project.path}/{plan.filePath}` for display only and is removed only when explicitly requested;
 the composed planning prompt directs the agent to register the finished task file through `POST /api/plans`, then print a final plan and task summary line before exiting.
 Session context records a project and task for planning sessions and additionally a plan for
@@ -146,7 +146,7 @@ src/lib/
 server/
 ├── agents.ts                     # Server-only CLI command definitions
 └── session-registry.ts           # In-memory concurrent PTY session registry
-data/                             # Runtime JSON database (git-ignored: projects.json, tasks.json, plans.json, settings.json)
+data/                             # Runtime JSON database (git-ignored: projects.json, tasks.json, plans.json, lifecycle-log.json, settings.json)
 .agent/
 ├── PROJECT_DOCUMENT.md          # this file
 ├── commands/tasks/              # plan, do-task, do-task-post, common-plan-doc
@@ -197,7 +197,8 @@ tasks in `.agent/tasks/` are archived by hand into
   browser tabs; a server restart removes this information together with the sessions.
 - A single `/tasks` screen provides a server-rendered, cross-project task table with pagination and optional project and status filters; it defaults to open tasks, which can be completed and reopened from the list or detail page. Its Plan column links to the latest registered plan for each task and indicates any additional plans. Plan registration moves open and in-progress tasks to Plan created, while already planned, completed, and cancelled tasks remain unchanged. `/tasks/new` creates tasks for any saved project. Per-project list and creation URLs redirect to these unified screens.
 - The `/plans` screen lists active plans across projects by default, with pagination plus project and status filters. Plans can be registered by hand, viewed and edited on a detail page, and deleted with optional removal of the plan file from disk. Every completed planning session automatically registers its final task file through `POST /api/plans` before its agent exits.
-- Projects are color-coded across project, task, and plan screens, with a palette color chosen on project create and detail forms.
+- Projects are color-coded across project, task, plan, and lifecycle-log screens, with a palette color chosen on project create and detail forms.
+- The main navigation includes **Logs**, which opens `/logs` to show persisted task and plan lifecycle events newest first. The screen paginates events, resolves project chips and extant record links when possible, and safely reports unavailable or malformed lifecycle-log data.
 
 ## Agent Harness Configuration
 

@@ -9,6 +9,7 @@ import {
   TASK_STATUSES as TASK_STATUS_VALUES,
   type TaskStatus,
 } from "./task-filters";
+import { appendLifecycleEvent } from "./lifecycle-log-store";
 import { publishTaskChange } from "./task-events";
 
 export type { TaskStatus } from "./task-filters";
@@ -260,6 +261,14 @@ export async function createTask(projectId: string, input: unknown): Promise<Tas
 
     document.tasks.push(task);
     await writeDocument(document);
+    await appendLifecycleEvent({
+      entityType: "task",
+      entityId: task.id,
+      projectId: task.projectId,
+      fromStatus: null,
+      toStatus: task.status,
+      createdAt: now,
+    });
     return task;
   });
 }
@@ -280,13 +289,28 @@ export async function updateTask(projectId: string, taskId: number, input: unkno
     if (patch.detail !== undefined) {
       task.detail = patch.detail;
     }
+    const previousStatus = task.status ?? DEFAULT_TASK_STATUS;
+    const statusChanged = patch.status !== undefined && patch.status !== previousStatus;
     if (patch.status !== undefined) {
       task.status = patch.status;
+    }
+    if (statusChanged) {
       task.completedAt = patch.status === "completed" ? new Date().toISOString() : null;
     }
-    task.updatedAt = new Date().toISOString();
+    const now = new Date().toISOString();
+    task.updatedAt = now;
     await writeDocument(document);
     const updatedTask = normalizeTask(task);
+    if (statusChanged) {
+      await appendLifecycleEvent({
+        entityType: "task",
+        entityId: updatedTask.id,
+        projectId: updatedTask.projectId,
+        fromStatus: previousStatus,
+        toStatus: updatedTask.status,
+        createdAt: now,
+      });
+    }
     publishTaskChange({
       projectId: updatedTask.projectId,
       taskId: updatedTask.id,

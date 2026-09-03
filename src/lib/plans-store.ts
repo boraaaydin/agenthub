@@ -3,6 +3,7 @@ import "server-only";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 
+import { appendLifecycleEvent } from "./lifecycle-log-store";
 import {
   DEFAULT_PLAN_STATUS,
   isPlanStatus,
@@ -272,6 +273,14 @@ export async function createPlan(input: unknown): Promise<Plan> {
     };
     document.plans.push(plan);
     await writeDocument(document);
+    await appendLifecycleEvent({
+      entityType: "plan",
+      entityId: plan.id,
+      projectId: plan.projectId,
+      fromStatus: null,
+      toStatus: plan.status,
+      createdAt: now,
+    });
     return plan;
   });
 }
@@ -292,12 +301,26 @@ export async function updatePlan(planId: number, input: unknown): Promise<Plan |
       return null;
     }
 
+    const previousStatus = normalizePlan(plan).status;
+    const statusChanged = patch.status !== undefined && patch.status !== previousStatus;
     if (plan.status === LEGACY_COMPLETED_STATUS) {
       plan.status = "completed";
     }
-    Object.assign(plan, patch, { updatedAt: new Date().toISOString() });
+    const now = new Date().toISOString();
+    Object.assign(plan, patch, { updatedAt: now });
     await writeDocument(document);
-    return normalizePlan(plan);
+    const updatedPlan = normalizePlan(plan);
+    if (statusChanged) {
+      await appendLifecycleEvent({
+        entityType: "plan",
+        entityId: updatedPlan.id,
+        projectId: updatedPlan.projectId,
+        fromStatus: previousStatus,
+        toStatus: updatedPlan.status,
+        createdAt: now,
+      });
+    }
+    return updatedPlan;
   });
 }
 

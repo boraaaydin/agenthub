@@ -1,3 +1,4 @@
+import { LifecycleLogStoreError } from "@/lib/lifecycle-log-store";
 import { getProject, ProjectStoreError } from "@/lib/projects-store";
 import {
   createTask,
@@ -74,11 +75,13 @@ export async function POST(
       return Response.json({ error: error.message }, { status: 400 });
     }
 
-    const message = error instanceof ProjectStoreError
-      ? "Project data could not be read. Check data/projects.json and try again."
-      : error instanceof TaskStoreError
-        ? "Task data could not be written. Check data/tasks.json and try again."
-        : "Unable to create the task. Try again.";
+    const message = error instanceof LifecycleLogStoreError
+      ? "The task was saved, but its lifecycle event could not be written. Check data/lifecycle-log.json before retrying."
+      : error instanceof ProjectStoreError
+        ? "Project data could not be read. Check data/projects.json and try again."
+        : error instanceof TaskStoreError
+          ? "Task data could not be written. Check data/tasks.json and try again."
+          : "Unable to create the task. Try again.";
     console.error("Unable to create project task", error);
     return Response.json({ error: message }, { status: 500 });
   }

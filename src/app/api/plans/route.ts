@@ -1,3 +1,4 @@
+import { LifecycleLogStoreError } from "@/lib/lifecycle-log-store";
 import { getProject, ProjectStoreError } from "@/lib/projects-store";
 import {
   createPlan,
@@ -83,13 +84,9 @@ export async function POST(request: Request) {
 
     const plan = await createPlan({ ...input, projectId: project.id });
 
-    try {
-      const task = await getTask(project.id, plan.taskId);
-      if (task?.status === "open" || task?.status === "plan_creating" || task?.status === "in_progress") {
-        await updateTask(project.id, plan.taskId, { status: "plan_created" });
-      }
-    } catch (error) {
-      console.error("Unable to mark the task as planned", error);
+    const task = await getTask(project.id, plan.taskId);
+    if (task?.status === "open" || task?.status === "plan_creating" || task?.status === "in_progress") {
+      await updateTask(project.id, plan.taskId, { status: "plan_created" });
     }
 
     return Response.json(plan, { status: 201 });
@@ -99,13 +96,15 @@ export async function POST(request: Request) {
     }
 
     console.error("Unable to create plan", error);
-    const message = error instanceof ProjectStoreError
-      ? "Project data could not be read. Check data/projects.json and try again."
-      : error instanceof TaskStoreError
-        ? "Task data could not be read. Check data/tasks.json and try again."
-        : error instanceof PlanStoreError
-          ? "Plan data could not be written. Check data/plans.json and try again."
-          : "Unable to create the plan. Try again.";
+    const message = error instanceof LifecycleLogStoreError
+      ? "The plan or task status was saved, but its lifecycle event could not be written. Check data/lifecycle-log.json before retrying."
+      : error instanceof ProjectStoreError
+        ? "Project data could not be read. Check data/projects.json and try again."
+        : error instanceof TaskStoreError
+          ? "Task data could not be read. Check data/tasks.json and try again."
+          : error instanceof PlanStoreError
+            ? "Plan data could not be written. Check data/plans.json and try again."
+            : "Unable to create the plan. Try again.";
     return Response.json({ error: message }, { status: 500 });
   }
 }

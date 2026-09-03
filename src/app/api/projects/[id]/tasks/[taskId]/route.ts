@@ -1,3 +1,4 @@
+import { LifecycleLogStoreError } from "@/lib/lifecycle-log-store";
 import {
   deleteTask,
   getTask,
@@ -62,9 +63,11 @@ export async function PATCH(
       return Response.json({ error: error.message }, { status: 400 });
     }
 
-    const message = error instanceof TaskStoreError
-      ? "Task data could not be updated. Check data/tasks.json and try again."
-      : "Unable to update the task. Try again.";
+    const message = error instanceof LifecycleLogStoreError
+      ? "The task status was saved, but its lifecycle event could not be written. Check data/lifecycle-log.json before retrying."
+      : error instanceof TaskStoreError
+        ? "Task data could not be updated. Check data/tasks.json and try again."
+        : "Unable to update the task. Try again.";
     console.error("Unable to update project task", error);
     return Response.json({ error: message }, { status: 500 });
   }
