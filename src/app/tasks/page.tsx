@@ -15,9 +15,7 @@ import {
   TASK_STATUS_LABELS,
   tasksHref,
 } from "@/lib/task-filters";
-import { listAllTasks, taskTaskKey, TaskStoreError, PLANS_PAGE_SIZE, type Task } from "@/lib/tasks-store";
-import { TERMINAL_TASK_STATUSES } from "@/lib/task-filters";
-import { listTasksByStatuses, TaskStoreError } from "@/lib/tasks-store";
+import { listAllTasks, TaskStoreError, TASKS_PAGE_SIZE, type Task } from "@/lib/tasks-store";
 import { taskConsoleHref } from "@/lib/task-execution";
 
 export const dynamic = "force-dynamic";
@@ -55,13 +53,13 @@ function TaskRows({ tasks, projectNames }: { tasks: Task[]; projectNames: Map<st
               <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
                 {project ? (
                   <Link
-                    href={`/projects/${task.projectId}/tasks/${task.taskId}`}
+                    href={`/projects/${task.projectId}/workitems/${task.workitemId}`}
                     className="font-medium text-sky-700 transition hover:text-sky-900 focus:outline-none focus:ring-3 focus:ring-sky-100"
                   >
-                    Task #{task.taskId}
+                    Workitem #{task.workitemId}
                   </Link>
                 ) : (
-                  <span className="text-slate-500">Task #{task.taskId}</span>
+                  <span className="text-slate-500">Workitem #{task.workitemId}</span>
                 )}
                 <span className="break-all font-mono text-slate-600">{task.filePath}</span>
                 {project ? (
@@ -105,19 +103,15 @@ export default async function TasksPage(props: PageProps<"/tasks">) {
     projects = savedProjects.map(({ id, name, color }) => ({ id, name, color }));
     projectNames = new Map(projects.map((project) => [project.id, { name: project.name, color: project.color }]));
     selectedProjectId = projects.some((project) => project.id === requestedProjectId) ? requestedProjectId ?? "" : "";
-    const excludedTaskKeys = selectedStatus === "all"
-      ? undefined
-      : new Set((await listTasksByStatuses(TERMINAL_TASK_STATUSES)).map((task) => taskTaskKey(task.projectId, task.id)));
     taskPage = await listAllTasks({
       page,
-      pageSize: PLANS_PAGE_SIZE,
+      pageSize: TASKS_PAGE_SIZE,
       projectId: selectedProjectId || undefined,
       statuses: selectedStatus === "all"
         ? undefined
         : selectedStatus === "active"
           ? ACTIVE_TASK_STATUSES
           : [selectedStatus],
-      excludedTaskKeys,
     });
     hasAnyTasks = (await listAllTasks({ page: 1, pageSize: 1 })).total > 0;
   } catch (caughtError) {
@@ -145,7 +139,7 @@ export default async function TasksPage(props: PageProps<"/tasks">) {
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
             <div>
               <h1 className="text-3xl font-semibold tracking-[-0.03em]">Tasks</h1>
-              <p className="mt-1 text-sm leading-6 text-slate-600">Tasks registered after task taskning sessions.</p>
+              <p className="mt-1 text-sm leading-6 text-slate-600">Tasks registered after planning sessions.</p>
             </div>
             <Link
               href={newTaskHref(selectedProjectId)}

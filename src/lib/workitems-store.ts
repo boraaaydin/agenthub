@@ -321,7 +321,7 @@ export async function updateWorkitem(projectId: string, workitemId: number, inpu
         entityType: "workitem",
         entityId: updatedWorkitem.id,
         projectId: updatedWorkitem.projectId,
-        fromStatus: previousStatus,
+        fromStatus: normalizeWorkitem({ ...workitem, status: previousStatus }).status,
         toStatus: updatedWorkitem.status,
         createdAt: now,
       });

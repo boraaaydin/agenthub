@@ -19,7 +19,7 @@ import {
 type Task = {
   id: number;
   projectId: string;
-  taskId: number;
+  workitemId: number;
   title: string;
   filePath: string;
   summary: string;
@@ -29,13 +29,13 @@ type Task = {
 };
 
 type Project = { id: string; name: string; color?: string };
-type Task = { id: number; title: string };
+type WorkitemOption = { id: number; title: string };
 type ApiError = { error?: string };
 
 type TaskDetailProps = {
   task: Task;
   projects: Project[];
-  tasksByProject: Record<string, Task[]>;
+  tasksByProject: Record<string, WorkitemOption[]>;
   taskExists: boolean;
   filePreview: React.ComponentProps<typeof TaskFilePreview>["result"];
   projectPath: string | null;
@@ -49,7 +49,7 @@ export default function TaskDetail({ task, projects, tasksByProject, taskExists,
   const router = useRouter();
   const [currentTask, setCurrentTask] = useState(task);
   const [projectId, setProjectId] = useState(task.projectId);
-  const [taskId, setTaskId] = useState(String(task.taskId));
+  const [workitemId, setTaskId] = useState(String(task.workitemId));
   const [title, setTitle] = useState(task.title);
   const [filePath, setFilePath] = useState(task.filePath);
   const [summary, setSummary] = useState(task.summary);
@@ -62,9 +62,9 @@ export default function TaskDetail({ task, projects, tasksByProject, taskExists,
   const statusControllerRef = useRef<AbortController | null>(null);
   const apiPath = `/api/tasks/${currentTask.id}`;
   const currentProject = projects.find((project) => project.id === currentTask.projectId);
-  const currentTaskExists = taskExists && currentTask.projectId === task.projectId && currentTask.taskId === task.taskId
+  const currentTaskExists = taskExists && currentTask.projectId === task.projectId && currentTask.workitemId === task.workitemId
     ? true
-    : Boolean(tasksByProject[currentTask.projectId]?.some((task) => task.id === currentTask.taskId));
+    : Boolean(tasksByProject[currentTask.projectId]?.some((task) => task.id === currentTask.workitemId));
   const availableTasks = tasksByProject[projectId] ?? [];
 
   useEffect(() => {
@@ -77,7 +77,7 @@ export default function TaskDetail({ task, projects, tasksByProject, taskExists,
 
   function resetForm() {
     setProjectId(task.projectId);
-    setTaskId(String(task.taskId));
+    setTaskId(String(task.workitemId));
     setTitle(task.title);
     setFilePath(task.filePath);
     setSummary(task.summary);
@@ -87,7 +87,7 @@ export default function TaskDetail({ task, projects, tasksByProject, taskExists,
 
   function changeProject(nextProjectId: string) {
     setProjectId(nextProjectId);
-    if (!tasksByProject[nextProjectId]?.some((task) => task.id === Number(taskId))) {
+    if (!tasksByProject[nextProjectId]?.some((task) => task.id === Number(workitemId))) {
       setTaskId("");
     }
     setStatusMessage("");
@@ -109,7 +109,7 @@ export default function TaskDetail({ task, projects, tasksByProject, taskExists,
       setError("Choose a project.");
       return;
     }
-    if (!taskId) {
+    if (!workitemId) {
       setError("Choose a task.");
       return;
     }
@@ -119,7 +119,7 @@ export default function TaskDetail({ task, projects, tasksByProject, taskExists,
       const response = await fetch(apiPath, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId, taskId, title, filePath, summary }),
+        body: JSON.stringify({ projectId, workitemId, title, filePath, summary }),
       });
       const body = (await response.json()) as Task | ApiError;
       if (!response.ok) {
@@ -129,7 +129,7 @@ export default function TaskDetail({ task, projects, tasksByProject, taskExists,
       const updatedTask = body as Task;
       setCurrentTask((current) => ({ ...updatedTask, status: current.status }));
       setProjectId(updatedTask.projectId);
-      setTaskId(String(updatedTask.taskId));
+      setTaskId(String(updatedTask.workitemId));
       setTitle(updatedTask.title);
       setFilePath(updatedTask.filePath);
       setSummary(updatedTask.summary);
@@ -228,8 +228,8 @@ export default function TaskDetail({ task, projects, tasksByProject, taskExists,
               <ProjectChip projectId={currentProject.id} name={currentProject.name} color={currentProject.color} />
             ) : <UnknownProjectChip />}
             {currentProject && currentTaskExists ? (
-              <Link href={`/projects/${currentTask.projectId}/tasks/${currentTask.taskId}`} className="font-medium text-sky-700 transition hover:text-sky-900 focus:outline-none focus:ring-3 focus:ring-sky-100">Task #{currentTask.taskId}</Link>
-            ) : <span>Task #{currentTask.taskId}</span>}
+              <Link href={`/projects/${currentTask.projectId}/workitems/${currentTask.workitemId}`} className="font-medium text-sky-700 transition hover:text-sky-900 focus:outline-none focus:ring-3 focus:ring-sky-100">Workitem #{currentTask.workitemId}</Link>
+            ) : <span>Workitem #{currentTask.workitemId}</span>}
           </div>
           <p className="mt-2 text-sm text-slate-500">Created {formatDate(currentTask.createdAt)} · Updated {formatDate(currentTask.updatedAt)}</p>
           <div className="mt-4 max-w-xs">
@@ -258,8 +258,8 @@ export default function TaskDetail({ task, projects, tasksByProject, taskExists,
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-800" htmlFor="task-task">Task</label>
-              <select id="task-task" value={taskId} onChange={(event) => { setTaskId(event.target.value); setStatusMessage(""); }} disabled={isSubmitting || !projectId} className="mt-2 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-sky-600 focus:ring-3 focus:ring-sky-100 disabled:cursor-not-allowed disabled:bg-slate-100">
+              <label className="block text-sm font-medium text-slate-800" htmlFor="task-workitem">Workitem</label>
+              <select id="task-task" value={workitemId} onChange={(event) => { setTaskId(event.target.value); setStatusMessage(""); }} disabled={isSubmitting || !projectId} className="mt-2 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-sky-600 focus:ring-3 focus:ring-sky-100 disabled:cursor-not-allowed disabled:bg-slate-100">
                 <option value="" disabled>{projectId ? "Select a task" : "Select a project first"}</option>
                 {availableTasks.map((task) => <option key={task.id} value={task.id}>#{task.id} · {task.title}</option>)}
               </select>

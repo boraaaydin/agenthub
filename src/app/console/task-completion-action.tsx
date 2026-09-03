@@ -1,12 +1,12 @@
 "use client";
 
-type PlanCompletionActionProps = {
+type TaskCompletionActionProps = {
   isCompleting: boolean;
   isSessionRunning: boolean;
   onComplete: () => void;
 };
 
-export function PlanCompletionAction({ isCompleting, isSessionRunning, onComplete }: PlanCompletionActionProps) {
+export function TaskCompletionAction({ isCompleting, isSessionRunning, onComplete }: TaskCompletionActionProps) {
   return (
     <button
       type="button"

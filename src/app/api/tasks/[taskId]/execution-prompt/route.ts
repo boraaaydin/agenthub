@@ -29,7 +29,7 @@ async function effectivePrompt(
 
 export async function GET(
   _request: Request,
-  context: RouteContext<"/api/tasks/[taskId]/task-prompt">,
+  context: RouteContext<"/api/tasks/[taskId]/execution-prompt">,
 ) {
   const { taskId: rawTaskId } = await context.params;
   const taskId = Number.parseInt(rawTaskId, 10);
@@ -85,7 +85,7 @@ export async function GET(
     projectId: project.id,
     projectName: project.name,
     projectPath: project.path,
-    taskId: task.taskId,
+    workitemId: task.workitemId,
     filePath: task.filePath,
     prompt: composeTaskPrompt({
       taskPrompt,
@@ -93,7 +93,7 @@ export async function GET(
       projectName: project.name,
       projectPath: project.path,
       taskId: task.id,
-      taskId: task.taskId,
+      workitemId: task.workitemId,
       taskTitle: task.title,
       filePath: task.filePath,
       summary: task.summary,

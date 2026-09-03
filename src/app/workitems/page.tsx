@@ -90,10 +90,10 @@ function WorkitemRows({
                     {taskInfo ? (
                       <div className="flex items-center gap-1.5">
                         <Link
-                          href={taskDetailHref(taskInfo.plan.id)}
-                          className={`inline-block rounded-md px-2 py-0.5 text-xs font-medium transition hover:opacity-80 focus:outline-none focus:ring-3 focus:ring-sky-100 ${taskStatusBadgeClass(taskInfo.plan.status)}`}
+                          href={taskDetailHref(taskInfo.task.id)}
+                          className={`inline-block rounded-md px-2 py-0.5 text-xs font-medium transition hover:opacity-80 focus:outline-none focus:ring-3 focus:ring-sky-100 ${taskStatusBadgeClass(taskInfo.task.status)}`}
                         >
-                          {taskStatusLabel(taskInfo.plan.status)}
+                          {taskStatusLabel(taskInfo.task.status)}
                         </Link>
                         {taskInfo.taskCount > 1 && (
                           <span className="text-xs text-slate-400">+{taskInfo.taskCount - 1}</span>

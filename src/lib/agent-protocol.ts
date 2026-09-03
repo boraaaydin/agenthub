@@ -1,12 +1,12 @@
 import { isAgentId, type AgentId } from "./agents";
-import type { TaskStatus } from "./task-filters";
+import type { WorkitemStatus } from "./workitem-filters";
 
 export type SessionState = "starting" | "running" | "exited";
 
 export type SessionContext = {
   projectId: string;
-  taskId: number;
-  planId?: number;
+  workitemId: number;
+  taskId?: number;
 };
 
 export type SessionSummary = {
@@ -41,7 +41,7 @@ export type ServerMessage =
   | { type: "scrollback"; sessionId: string; data: string }
   | { type: "output"; sessionId: string; data: string }
   | { type: "exit"; sessionId: string; code: number }
-  | { type: "task-changed"; projectId: string; taskId: number; status: TaskStatus }
+  | { type: "workitem-changed"; projectId: string; workitemId: number; status: WorkitemStatus }
   | { type: "error"; message: string; sessionId?: string };
 
 const isDimension = (value: unknown, maximum: number) =>
@@ -60,16 +60,16 @@ export function isSessionContext(value: unknown): value is SessionContext {
 
   const context = value as Record<string, unknown>;
   return (
-    (context.planId === undefined ||
-      (typeof context.planId === "number" &&
-        Number.isInteger(context.planId) &&
-        context.planId > 0)) &&
+    (context.taskId === undefined ||
+      (typeof context.taskId === "number" &&
+        Number.isInteger(context.taskId) &&
+        context.taskId > 0)) &&
     typeof context.projectId === "string" &&
     context.projectId.trim().length > 0 &&
     context.projectId.length <= 200 &&
-    typeof context.taskId === "number" &&
-    Number.isInteger(context.taskId) &&
-    context.taskId > 0
+    typeof context.workitemId === "number" &&
+    Number.isInteger(context.workitemId) &&
+    context.workitemId > 0
   );
 }
 

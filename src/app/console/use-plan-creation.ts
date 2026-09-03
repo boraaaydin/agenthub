@@ -3,11 +3,11 @@
 import { useCallback, useEffect, useRef } from "react";
 
 import type { SessionSummary } from "@/lib/agent-protocol";
-import { isTaskStatus } from "@/lib/task-filters";
+import { isWorkitemStatus } from "@/lib/workitem-filters";
 
 type PlanningSession = {
   projectId: string;
-  taskId: number;
+  workitemId: number;
   exitHandled: boolean;
 };
 
@@ -51,13 +51,13 @@ export function usePlanCreation({ setError }: UsePlanCreationOptions) {
 
   const trackPlanningSession = useCallback((session: SessionSummary) => {
     const context = session.execution;
-    if (!context || context.planId || planningSessionsRef.current.has(session.id)) {
+    if (!context || context.taskId || planningSessionsRef.current.has(session.id)) {
       return;
     }
 
     planningSessionsRef.current.set(session.id, {
       projectId: context.projectId,
-      taskId: context.taskId,
+      workitemId: context.workitemId,
       exitHandled: false,
     });
   }, []);
@@ -79,7 +79,7 @@ export function usePlanCreation({ setError }: UsePlanCreationOptions) {
       id !== sessionId &&
       !session.exitHandled &&
       session.projectId === planningSession.projectId &&
-      session.taskId === planningSession.taskId
+      session.workitemId === planningSession.workitemId
     ));
     if (hasAnotherPlanningSession) {
       return;
@@ -88,7 +88,7 @@ export function usePlanCreation({ setError }: UsePlanCreationOptions) {
     const controller = new AbortController();
     controllersRef.current.add(controller);
     void (async () => {
-      const taskPath = `/api/projects/${encodeURIComponent(planningSession.projectId)}/tasks/${planningSession.taskId}`;
+      const taskPath = `/api/projects/${encodeURIComponent(planningSession.projectId)}/workitems/${planningSession.workitemId}`;
       try {
         const taskResponse = await fetch(taskPath, { signal: controller.signal });
         if (!taskResponse.ok) {
@@ -96,10 +96,10 @@ export function usePlanCreation({ setError }: UsePlanCreationOptions) {
         }
 
         const task = await taskResponse.json() as { status?: unknown };
-        if (!isTaskStatus(task.status)) {
-          throw new Error("The task response was invalid.");
+        if (!isWorkitemStatus(task.status)) {
+          throw new Error("The workitem response was invalid.");
         }
-        if (task.status !== "plan_creating") {
+        if (task.status !== "task_creating") {
           return;
         }
 
@@ -115,7 +115,7 @@ export function usePlanCreation({ setError }: UsePlanCreationOptions) {
       } catch (error) {
         if (!(error instanceof DOMException && error.name === "AbortError")) {
           showError(
-            `Unable to reopen task #${planningSession.taskId} after planning: ${error instanceof Error ? error.message : "Try again."}`,
+            `Unable to reopen workitem #${planningSession.workitemId} after planning: ${error instanceof Error ? error.message : "Try again."}`,
           );
         }
       } finally {

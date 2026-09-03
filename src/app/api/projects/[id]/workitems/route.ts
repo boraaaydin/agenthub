@@ -5,7 +5,7 @@ import {
   listProjectWorkitems,
   WorkitemStoreError,
   WorkitemValidationError,
-  TASKS_PAGE_SIZE,
+  WORKITEMS_PAGE_SIZE,
 } from "@/lib/workitems-store";
 import { isWorkitemStatus } from "@/lib/workitem-filters";
 
@@ -37,7 +37,7 @@ export async function GET(
     const status = statusFromRequest(request);
     return Response.json(await listProjectWorkitems(id, {
       page: pageFromRequest(request),
-      pageSize: TASKS_PAGE_SIZE,
+      pageSize: WORKITEMS_PAGE_SIZE,
       statuses: status ? [status] : undefined,
     }));
   } catch (error) {

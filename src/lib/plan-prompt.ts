@@ -4,32 +4,32 @@ type ComposePlanPromptOptions = ProjectPromptTokens & {
   planPrompt: string;
   planPostPrompt: string;
   projectId: string;
-  taskId: number;
+  workitemId: number;
   taskTitle: string;
   taskDetail: string;
-  plansEndpoint?: string;
+  tasksEndpoint?: string;
 };
 
 function planLanguageSection(project: ProjectPromptTokens): string {
   return [
     "## Plan language",
     "Write the plan in the same language as the task title and detail above; infer that language from that text.",
-    "This covers the task file's prose, the plan title, and the plan summary registered with AgentHub through POST /api/plans.",
+    "This covers the task file's prose, the plan title, and the plan summary registered with AgentHub through POST /api/tasks.",
     "If the task text explicitly asks for another language, use the requested language instead.",
     `Regardless of language, keep the Markdown section headings, the \`Root application (\`${projectSlug(project)}\`)\` line, the lowercase kebab-case English file name, file paths, commands, and code identifiers in English.`,
   ].join("\n\n");
 }
 
-function registerPlanPrompt({ projectId, taskId, plansEndpoint }: Pick<ComposePlanPromptOptions, "projectId" | "taskId" | "plansEndpoint">): string {
-  if (!plansEndpoint) {
+function registerPlanPrompt({ projectId, workitemId, tasksEndpoint }: Pick<ComposePlanPromptOptions, "projectId" | "workitemId" | "tasksEndpoint">): string {
+  if (!tasksEndpoint) {
     return "";
   }
 
   return [
     "## Register the plan in AgentHub",
-    `POST ${plansEndpoint} with Content-Type: application/json.`,
+    `POST ${tasksEndpoint} with Content-Type: application/json.`,
     "After the task file is final and before ending the CLI process or following the exit step above, register it with:",
-    `curl -X POST "${plansEndpoint}" -H "Content-Type: application/json" -d '{"projectId":"${projectId}","taskId":${taskId},"title":"PLAN_TITLE","filePath":".agent/tasks/PLAN_FILE.md","summary":"One or two sentence summary."}'`,
+    `curl -X POST "${tasksEndpoint}" -H "Content-Type: application/json" -d '{"projectId":"${projectId}","workitemId":${workitemId},"title":"PLAN_TITLE","filePath":".agent/tasks/PLAN_FILE.md","summary":"One or two sentence summary."}'`,
     "Replace PLAN_TITLE, filePath, and summary with the finished plan's title, repository-relative task-file path, and one or two sentence summary.",
     "If the response is not 201, report that failure in your final summary, then still finish and exit; do not retry in a loop.",
   ].join("\n\n");
@@ -39,7 +39,7 @@ export function composePlanPrompt(options: ComposePlanPromptOptions): string {
   const project = { projectName: options.projectName, projectPath: options.projectPath };
   const sections = [
     applyPromptTokens(options.planPrompt.trim(), project),
-    `## Task #${options.taskId}: ${options.taskTitle.trim()}\n\n${options.taskDetail.trim() || "No detail provided."}`,
+    `## Workitem #${options.workitemId}: ${options.taskTitle.trim()}\n\n${options.taskDetail.trim() || "No detail provided."}`,
     planLanguageSection(project),
     applyPromptTokens(options.planPostPrompt.trim(), project),
   ];
@@ -51,10 +51,10 @@ export function composePlanPrompt(options: ComposePlanPromptOptions): string {
   return sections.join("\n\n---\n\n");
 }
 
-export function planConsoleHref(projectId: string, taskId: number): string {
+export function planConsoleHref(projectId: string, workitemId: number): string {
   const searchParams = new URLSearchParams({
     planProjectId: projectId,
-    planTaskId: String(taskId),
+    planWorkitemId: String(workitemId),
   });
   return `/console?${searchParams.toString()}`;
 }

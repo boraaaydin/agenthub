@@ -45,7 +45,7 @@ export function WorkitemStatusButton({ projectId, workitemId, status }: Workitem
     }
   }
 
-  if (status !== "open" && status !== "plan_created" && status !== "completed") {
+  if (status !== "open" && status !== "task_created" && status !== "completed") {
     return null;
   }
 

@@ -9,14 +9,14 @@ import { BrandBar } from "../brand-bar";
 import { AGENTS, DEFAULT_AGENT_ID, getAgent, type AgentId } from "@/lib/agents";
 import type { ClientMessage, SessionContext, SessionSummary } from "@/lib/agent-protocol";
 import { terminalSubmission } from "@/lib/terminal-input";
-import { PlanClosePrompt } from "./task-close-prompt";
-import { PlanCompletionAction } from "./task-completion-action";
+import { TaskClosePrompt } from "./task-close-prompt";
+import { TaskCompletionAction } from "./task-completion-action";
 import { SessionInfo } from "./session-info";
 import { SessionSidebar } from "./session-sidebar";
 import { SessionTerminal } from "./session-terminal";
 import { useAgentSocket } from "./use-agent-socket";
 import { usePlanCreation } from "./use-plan-creation";
-import { usePlanExecution } from "./use-task-execution";
+import { useTaskExecution } from "./use-task-execution";
 import { usePlanRun } from "./use-plan-run";
 import { useTaskRun } from "./use-task-run";
 
@@ -57,8 +57,8 @@ export function AgentConsole() {
   const projectSelectionInitializedRef = useRef(false);
   const initialProjectIdRef = useRef(searchParams.get("projectId"));
   const initialPlanProjectIdRef = useRef(searchParams.get("planProjectId"));
-  const initialPlanTaskIdRef = useRef(searchParams.get("planTaskId"));
-  const initialTaskPlanIdRef = useRef(searchParams.get("taskPlanId"));
+  const initialPlanWorkitemIdRef = useRef(searchParams.get("planWorkitemId"));
+  const initialRunTaskIdRef = useRef(searchParams.get("runTaskId"));
   const sendRef = useRef<(message: ClientMessage) => boolean>(sendPlaceholder);
   const {
     beginExecution,
@@ -67,9 +67,9 @@ export function AgentConsole() {
     dismissPrompt,
     execution,
     handleSessionExit,
-    completePlanAndTask,
+    completeTaskAndWorkitem,
     isCompleting,
-  } = usePlanExecution({ setError });
+  } = useTaskExecution({ setError });
   const { handlePlanningSessionExit, trackPlanningSession, trackPlanningSessions } = usePlanCreation({ setError });
 
   const onSessions = useCallback((nextSessions: SessionSummary[]) => {
@@ -308,24 +308,12 @@ export function AgentConsole() {
     send({ type: "stop", sessionId: activeSession.id });
   }
 
-  const completeActivePlan = useCallback(() => {
+  const completeActiveTask = useCallback(() => {
     const context = activeSession?.execution;
-    if (!activeSession || !context?.planId) {
-      return;
-    }
-
+    if (!activeSession || !context?.taskId) return;
     setError("");
-    void completePlanAndTask(
-      {
-        planId: context.planId,
-        projectId: context.projectId,
-        taskId: context.taskId,
-        sessionId: activeSession.id,
-        isRunning: activeSession.state === "running",
-      },
-      closeCompletedSession,
-    );
-  }, [activeSession, closeCompletedSession, completePlanAndTask]);
+    void completeTaskAndWorkitem({ taskId: context.taskId, projectId: context.projectId, workitemId: context.workitemId, sessionId: activeSession.id, isRunning: activeSession.state === "running" }, closeCompletedSession);
+  }, [activeSession, closeCompletedSession, completeTaskAndWorkitem]);
 
   function togglePromptVisibility() {
     if (!isPromptVisible) {
@@ -361,7 +349,7 @@ export function AgentConsole() {
 
   usePlanRun({
     planProjectIdRef: initialPlanProjectIdRef,
-    planTaskIdRef: initialPlanTaskIdRef,
+    planWorkitemIdRef: initialPlanWorkitemIdRef,
     connected,
     isLoadingProjects,
     terminalReady,
@@ -373,7 +361,7 @@ export function AgentConsole() {
   });
 
   useTaskRun({
-    planIdRef: initialTaskPlanIdRef,
+    taskIdRef: initialRunTaskIdRef,
     connected,
     isLoadingProjects,
     terminalReady,
@@ -474,9 +462,9 @@ export function AgentConsole() {
             {error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>}
 
             {execution && execution.prompt !== "hidden" && (
-              <PlanClosePrompt
-                planId={execution.planId}
+              <TaskClosePrompt
                 taskId={execution.taskId}
+                workitemId={execution.workitemId}
                 isClosing={execution.isClosing || isCompleting}
                 isCompleted={execution.prompt === "success"}
                 onConfirm={() => { void confirmClose(closeCompletedSession); }}
@@ -509,11 +497,11 @@ export function AgentConsole() {
                 >
                   {isPromptVisible ? "Hide prompt" : "Show prompt"}
                 </button>
-                {activeSession?.execution?.planId && (
-                  <PlanCompletionAction
+                {activeSession?.execution?.taskId && (
+                  <TaskCompletionAction
                     isCompleting={isCompleting}
                     isSessionRunning={activeSession.state !== "exited"}
-                    onComplete={completeActivePlan}
+                    onComplete={completeActiveTask}
                   />
                 )}
               </div>

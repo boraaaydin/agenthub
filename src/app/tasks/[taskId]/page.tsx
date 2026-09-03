@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { BrandBar } from "../../brand-bar";
 import TaskDetail from "./task-detail";
 import { readTaskFile } from "@/lib/task-file";
-import { getTask, TaskStoreError } from "@/lib/tasks-store";
 import { getProject, listProjects, ProjectStoreError } from "@/lib/projects-store";
 import { getTask, listAllTasks, TaskStoreError } from "@/lib/tasks-store";
 
@@ -40,7 +39,7 @@ export default async function TaskDetailPage(props: PageProps<"/tasks/[taskId]">
       listProjects(),
       listAllTasks({ page: 1, pageSize: 500 }),
     ]);
-    taskExists = Boolean(project && await getTask(task.projectId, task.taskId));
+    taskExists = Boolean(project);
     projects = savedProjects.map(({ id, name, color }) => ({ id, name, color }));
     tasksByProject = taskPage.tasks.reduce<Record<string, { id: number; title: string }[]>>((groups, task) => {
       (groups[task.projectId] ??= []).push({ id: task.id, title: task.title });

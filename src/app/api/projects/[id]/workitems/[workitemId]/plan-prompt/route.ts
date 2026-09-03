@@ -79,9 +79,9 @@ export async function GET(
       projectPath: project.path,
       projectId: project.id,
       workitemId: workitem.id,
-      workitemTitle: workitem.title,
-      workitemDetail: workitem.detail,
-      plansEndpoint: `${new URL(request.url).origin}/api/plans`,
+      taskTitle: workitem.title,
+      taskDetail: workitem.detail,
+      tasksEndpoint: `${new URL(request.url).origin}/api/tasks`,
     }),
   });
 }
