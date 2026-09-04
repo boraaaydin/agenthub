@@ -12,9 +12,12 @@ import {
   type RemoteAccessMethodId,
 } from "./remote-access";
 import type { SettingsPromptField } from "./settings-prompts";
+import { publishSettingsChange } from "./settings-events";
+import { validateIpRange } from "../../server/ip-allowlist";
 
 export type RemoteAccessSettings = {
   methods: { id: RemoteAccessMethodId; enabled: boolean }[];
+  additionalAllowedIps: string[];
 };
 
 export type Settings = {
@@ -54,6 +57,7 @@ export function defaultSettings(): Settings {
     initializeGitInNewProjects: true,
     remoteAccess: {
       methods: REMOTE_ACCESS_METHODS.map((method) => ({ id: method.id, enabled: false })),
+      additionalAllowedIps: [],
     },
   };
 }
@@ -180,8 +184,9 @@ function parseRemoteAccess(value: unknown): RemoteAccessSettings {
   }
 
   const remoteAccess = value as Record<string, unknown>;
+  const additionalAllowedIps = parseAdditionalAllowedIps(remoteAccess.additionalAllowedIps);
   if (!("methods" in remoteAccess)) {
-    return defaultSettings().remoteAccess;
+    return { ...defaultSettings().remoteAccess, additionalAllowedIps };
   }
   if (!Array.isArray(remoteAccess.methods)) {
     throw new SettingsStoreError(`Settings data in ${SETTINGS_FILE_PATH} has an invalid format.`);
@@ -203,6 +208,7 @@ function parseRemoteAccess(value: unknown): RemoteAccessSettings {
       id: method.id,
       enabled: enabledById.get(method.id) ?? false,
     })),
+    additionalAllowedIps,
   };
 }
 
@@ -235,7 +241,58 @@ function validateRemoteAccess(value: unknown): RemoteAccessSettings {
     return { id: entry.id, enabled: entry.enabled };
   });
 
-  return { methods };
+  const additionalAllowedIps = validateAdditionalAllowedIps(remoteAccess.additionalAllowedIps);
+
+  return { methods, additionalAllowedIps };
+}
+
+function parseAdditionalAllowedIps(value: unknown): string[] {
+  if (value === undefined) {
+    return [];
+  }
+  if (!Array.isArray(value) || value.some((entry) => typeof entry !== "string")) {
+    throw new SettingsStoreError(`Settings data in ${SETTINGS_FILE_PATH} has an invalid format.`);
+  }
+
+  try {
+    return normalizeAdditionalAllowedIps(value);
+  } catch {
+    throw new SettingsStoreError(`Settings data in ${SETTINGS_FILE_PATH} has an invalid format.`);
+  }
+}
+
+function validateAdditionalAllowedIps(value: unknown): string[] {
+  if (!Array.isArray(value) || value.some((entry) => typeof entry !== "string")) {
+    throw new SettingsValidationError("Additional allowed IP addresses must be an array of strings.");
+  }
+
+  return normalizeAdditionalAllowedIps(value);
+}
+
+function normalizeAdditionalAllowedIps(entries: string[]): string[] {
+  const normalizedEntries = entries
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+
+  if (normalizedEntries.length > 50) {
+    throw new SettingsValidationError("Additional allowed IP addresses cannot contain more than 50 entries.");
+  }
+
+  const seenEntries = new Set<string>();
+  return normalizedEntries.map((entry) => {
+    let normalizedEntry: string;
+    try {
+      normalizedEntry = validateIpRange(entry);
+    } catch {
+      throw new SettingsValidationError(`"${entry}" is not a valid IP address or CIDR range.`);
+    }
+
+    if (seenEntries.has(normalizedEntry)) {
+      throw new SettingsValidationError(`"${entry}" is listed more than once.`);
+    }
+    seenEntries.add(normalizedEntry);
+    return normalizedEntry;
+  });
 }
 
 async function readDocument(): Promise<Settings> {
@@ -287,6 +344,7 @@ export async function saveSettings(input: unknown): Promise<Settings> {
   return serializeWrite(async () => {
     const settings = { ...await readDocument(), ...update };
     await writeDocument(settings);
+    publishSettingsChange();
     return settings;
   });
 }

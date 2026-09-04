@@ -28,6 +28,7 @@ export default async function RemoteAccessPage() {
       {error && <p role="alert" className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>}
       <RemoteAccessForm
         methods={settings.remoteAccess.methods}
+        additionalAllowedIps={settings.remoteAccess.additionalAllowedIps}
         tailscaleStatus={tailscaleStatus}
         port={process.env.PORT ?? "3000"}
         canManage={canManage}

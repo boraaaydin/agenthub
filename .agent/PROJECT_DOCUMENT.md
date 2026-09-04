@@ -41,6 +41,11 @@ Node server  ──  node-pty  ──  claude / codex / pi CLI process
   Input from the browser is written to the PTY's stdin; PTY output is pushed to the browser as
   it arrives. Plain HTTP request/response cannot hold an interactive session open, so a custom
   Node server process hosts both Next.js and the WebSocket endpoint.
+- **Remote IP guard** — the custom server rejects HTTP and WebSocket connections before they
+  reach Next.js or `ws` unless their source address is loopback, in a Tailscale range, or in the
+  persisted `remoteAccess.additionalAllowedIps` allowlist. The cached server-side `BlockList`
+  refreshes whenever settings are saved, so this boundary never falls open when settings cannot
+  be read.
 - **xterm.js** — renders the raw stream in the browser. Agent output contains ANSI escape
   codes (colors, cursor movement, spinners); xterm.js interprets them instead of showing them
   as garbage characters.
@@ -68,7 +73,7 @@ execution sessions; it is retained with each in-memory session summary so the co
 contextual controls after a reload. Composed task-execution prompts instruct the agent to report
 completion through `PATCH /api/tasks/{id}`, while the custom server marks an execution session's
 task `executed` when that session exits. Global Task and Plan agent defaults plus the four global task-flow prompts are
-persisted in git-ignored `data/settings.json`, alongside an extensible `remoteAccess.methods` list of enabled remote-access methods. Settings also keep `defaultProjectPath` (empty until configured) and `initializeGitInNewProjects` (true by default). The Projects settings screen controls these values; git initialization is offered only when a local git executable is available. When a prompt has no saved value, settings displays
+persisted in git-ignored `data/settings.json`, alongside an extensible `remoteAccess.methods` list of enabled remote-access methods and `remoteAccess.additionalAllowedIps`, which can add trusted IPv4/IPv6 addresses or CIDR ranges beyond the fixed loopback and Tailscale boundary. Settings also keep `defaultProjectPath` (empty until configured) and `initializeGitInNewProjects` (true by default). The Projects settings screen controls these values; git initialization is offered only when a local git executable is available. When a prompt has no saved value, settings displays
 the matching built-in prompt from `src/lib/default-prompts/` in muted text; these defaults are read
 by the server-only `src/lib/default-settings-prompts.ts` module. Built-in and saved prompts may use
 `{{PROJECT_NAME}}` and `{{PROJECT_SLUG}}`, which are resolved for the session's project during prompt
@@ -86,7 +91,8 @@ The persisted work model uses **Workitems** for units of work and **Tasks** for 
 
 - Session persistence across a server restart (in-memory only vs. on disk).
 - Console sessions run in the directory of a selected saved application, falling back to the project directory for applicationless legacy projects.
-- Sessions may run only in a saved project or application path (or one of their subdirectories). Non-loopback clients can browse and run sessions in those paths, but cannot create, edit, or delete projects and applications; change path-related project settings; inspect directories; or start remote-access setup sessions.
+- Sessions may run only in a saved project or application path (or one of their subdirectories). Allowed non-loopback clients can browse and run sessions in those paths, but cannot create, edit, or delete projects and applications; change path-related project settings; inspect directories; or start remote-access setup sessions. Incoming connections are always restricted to loopback, Tailscale, and user-added trusted IP ranges; this guard cannot be disabled and provides no authentication within its boundary.
+- Desktop packaging direction: **Tauri** (a Node sidecar hosting the existing custom server), not Electron; licensing is designed but deferred to follow-up issues. Nothing is implemented yet — the reasoning, prerequisites, and follow-up issues are in `docs/research/desktop-app-packaging.md` and `docs/research/desktop-licensing.md`.
 
 ## Tech Stack
 
@@ -156,7 +162,8 @@ src/lib/
 ├── default-prompts/              # Built-in task-flow prompt Markdown files
 ├── default-settings-prompts.ts   # Server-only built-in prompt reader
 ├── prompt-tokens.ts              # Client-safe project prompt token resolution
-├── remote-access.ts              # Client-safe remote-access method and setup-action catalogs
+├── remote-access.ts              # Client-safe remote-access catalogs and built-in allowed-range display data
+├── settings-events.ts            # Client-safe settings-change pub/sub for server cache refreshes
 ├── session-completion.ts         # Shared session exit-policy types, validation, and outcome helpers
 ├── tailscale.ts                  # Server-only Tailscale CLI discovery and status probe
 ├── git.ts                        # Server-only git availability, repository, and submodule helpers
@@ -169,9 +176,12 @@ server/
 ├── agents.ts                     # Server-only CLI command definitions
 ├── setup-commands.ts             # Allowlisted remote-access setup command definitions
 ├── tailscale-cli.ts              # Shared server-side Tailscale CLI resolver
+├── ip-allowlist.ts               # Server-only IP/CIDR validation and BlockList construction
+├── remote-ip-guard.ts            # Cached server-only incoming-connection allowlist
 ├── git-cli.ts                    # Shared server-side git CLI resolver
 └── session-registry.ts           # In-memory concurrent PTY session registry
 data/                             # Runtime JSON database (git-ignored: projects.json, applications.json, tasks.json, plans.json, lifecycle-log.json, settings.json)
+docs/research/                    # Research and decision documents (desktop packaging, licensing)
 .agent/
 ├── PROJECT_DOCUMENT.md          # this file
 ├── commands/tasks/              # plan, do-task, do-task-post, common-plan-doc
@@ -208,7 +218,7 @@ tasks in `.agent/tasks/` are archived by hand into
   the same PTY terminal, accept interactive input such as `sudo`, and close after successful setup
   with a modal that links back to remote-access settings; failed setup sessions remain available
   with their output and report the exit code.
-- Settings includes a **Remote access** screen with an extensible method catalog. Its Tailscale method detects installation and tailnet connection status, shows tailnet URLs when connected, and starts visible install or connect setup sessions when needed. AgentHub adds no authentication for tailnet access.
+- Settings includes a **Remote access** screen with an extensible method catalog and an editable additional-IP allowlist. Loopback and Tailscale ranges are always allowed; saved IPv4/IPv6 addresses and CIDRs widen the incoming-connection boundary without a restart. Its Tailscale method detects installation and tailnet connection status, shows tailnet URLs when connected, and starts visible install or connect setup sessions when needed. AgentHub adds no authentication within the allowed boundary.
 - Every project has a persisted task list with server-side URL pagination; project deletion can
   explicitly remove its tasks or leave them in place.
 - Tasks can start a new console session for planning; the session uses the configured Plan agent

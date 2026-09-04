@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { LocalOnlyNotice } from "../../local-only-notice";
+import AllowedIpsSection from "./allowed-ips-section";
 import { REMOTE_ACCESS_METHODS, type RemoteAccessMethodId } from "@/lib/remote-access";
 
 type TailscaleStatus =
@@ -18,6 +19,7 @@ type ApiError = { error?: string };
 
 type RemoteAccessFormProps = {
   methods: { id: RemoteAccessMethodId; enabled: boolean }[];
+  additionalAllowedIps: string[];
   tailscaleStatus: TailscaleStatus;
   port: string;
   canManage: boolean;
@@ -25,6 +27,7 @@ type RemoteAccessFormProps = {
 
 export default function RemoteAccessForm({
   methods,
+  additionalAllowedIps,
   tailscaleStatus,
   port,
   canManage,
@@ -50,7 +53,9 @@ export default function RemoteAccessForm({
       const response = await fetch("/api/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ remoteAccess: { methods: nextMethods } }),
+        body: JSON.stringify({
+          remoteAccess: { methods: nextMethods, additionalAllowedIps },
+        }),
       });
       const body = await response.json() as ApiError;
       if (!response.ok) {
@@ -137,8 +142,13 @@ export default function RemoteAccessForm({
       })}
 
       <aside className="rounded-[14px] border border-amber-200 bg-amber-50 px-4 py-4 text-sm leading-6 text-amber-900">
-        <strong>No authentication is added.</strong> Anyone who can reach this port can drive your agents. Your tailnet is the only boundary, and AgentHub listens on every network interface—not only the Tailscale address.
+        <strong>No authentication is added.</strong> AgentHub only serves this machine, Tailscale, and the additional ranges listed here. Anyone inside that boundary can drive your agents.
       </aside>
+
+      <AllowedIpsSection
+        additionalAllowedIps={additionalAllowedIps}
+        methods={enabledMethods}
+      />
 
       {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>}
       {success && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{success}</p>}

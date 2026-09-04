@@ -7,15 +7,26 @@ import {
   type ClientMessage,
   type ServerMessage,
 } from "./src/lib/agent-protocol";
+import { subscribeToSettingsChanges } from "./src/lib/settings-events";
 import { subscribeToWorkitemChanges } from "./src/lib/workitem-events";
 import { CLIENT_ORIGIN_HEADER, isLoopbackAddress } from "./src/lib/request-origin";
+import { isAllowedRemoteAddress, refreshRemoteIpAllowlist } from "./server/remote-ip-guard";
 import { SessionRegistry } from "./server/session-registry";
 
 const port = Number.parseInt(process.env.PORT ?? "3000", 10);
 const dev = process.env.NODE_ENV !== "production";
 const app = next({ dev });
 const handle = app.getRequestHandler();
+const refusedAddresses = new Set<string>();
+
 const httpServer = createServer((request, response) => {
+  if (!isAllowedRemoteAddress(request.socket.remoteAddress)) {
+    logRefusedConnection(request.socket.remoteAddress);
+    response.writeHead(403, { "Content-Type": "text/plain; charset=utf-8" });
+    response.end("Forbidden: this address is not allowed to reach AgentHub.");
+    return;
+  }
+
   delete request.headers[CLIENT_ORIGIN_HEADER];
   request.headers[CLIENT_ORIGIN_HEADER] = isLoopbackAddress(request.socket.remoteAddress)
     ? "local"
@@ -32,6 +43,9 @@ const clients = new Set<WebSocket>();
 const localSockets = new Map<WebSocket, boolean>();
 const unsubscribeFromWorkitemChanges = subscribeToWorkitemChanges((change) => {
   broadcast({ type: "workitem-changed", ...change });
+});
+const unsubscribeFromSettingsChanges = subscribeToSettingsChanges(() => {
+  void refreshRemoteIpAllowlist();
 });
 
 const sessions = new SessionRegistry({
@@ -74,6 +88,12 @@ socketServer.on("connection", (socket, request) => {
 });
 
 httpServer.on("upgrade", (request, socket, head) => {
+  if (!isAllowedRemoteAddress(request.socket.remoteAddress)) {
+    logRefusedConnection(request.socket.remoteAddress);
+    socket.destroy();
+    return;
+  }
+
   const url = new URL(request.url ?? "/", "http://localhost");
   if (url.pathname !== "/api/agent-socket") {
     // Next.js registers its own upgrade listener for dev-mode HMR. Do not close
@@ -88,7 +108,8 @@ httpServer.on("upgrade", (request, socket, head) => {
 
 httpServer.on("close", () => sessions.stopAll());
 
-app.prepare().then(() => {
+app.prepare().then(async () => {
+  await refreshRemoteIpAllowlist();
   httpServer.listen(port, () => {
     console.log(`> AgentHub listening at http://localhost:${port} (${dev ? "development" : "production"})`);
   });
@@ -259,6 +280,18 @@ function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Could not start the selected agent.";
 }
 
+function logRefusedConnection(address: string | undefined) {
+  const displayAddress = address ?? "unknown address";
+  if (refusedAddresses.has(displayAddress)) {
+    return;
+  }
+  refusedAddresses.add(displayAddress);
+  console.warn(`Refused a connection from ${displayAddress} (not in the allowed IP list).`);
+  if (refusedAddresses.size > 200) {
+    refusedAddresses.clear();
+  }
+}
+
 async function listAllowedRoots(): Promise<string[]> {
   const endpoint = `http://127.0.0.1:${port}/api/projects`;
   const response = await fetch(endpoint);
@@ -324,6 +357,7 @@ function shutdown() {
   }
   shuttingDown = true;
   unsubscribeFromWorkitemChanges();
+  unsubscribeFromSettingsChanges();
   sessions.stopAll();
   socketServer.clients.forEach((client) => client.close());
   httpServer.close(() => process.exit(0));

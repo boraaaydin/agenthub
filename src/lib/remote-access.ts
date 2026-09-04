@@ -1,5 +1,12 @@
 import type { SessionCompletion } from "./session-completion";
 
+export const BUILT_IN_ALLOWED_IP_RANGES = [
+  { range: "127.0.0.0/8", label: "This machine (IPv4 loopback)" },
+  { range: "::1", label: "This machine (IPv6 loopback)" },
+  { range: "100.64.0.0/10", label: "Tailscale (IPv4 CGNAT)" },
+  { range: "fd7a:115c:a1e0::/48", label: "Tailscale (IPv6)" },
+] as const;
+
 export const REMOTE_ACCESS_METHODS = [
   { id: "tailscale", label: "Tailscale" },
 ] as const;
