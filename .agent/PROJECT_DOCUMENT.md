@@ -62,7 +62,9 @@ edited (including project/task relinking), or deleted. The `/plans` list default
 the composed planning prompt directs the agent to register the finished task file through `POST /api/plans`, then print a final plan and task summary line before exiting.
 Session context records a project and task for planning sessions and additionally a plan for
 execution sessions; it is retained with each in-memory session summary so the console can restore
-contextual controls after a reload. Global Task and Plan agent defaults plus the four global task-flow prompts are
+contextual controls after a reload. Composed task-execution prompts instruct the agent to report
+completion through `PATCH /api/tasks/{id}`, while the custom server marks an execution session's
+task `executed` when that session exits. Global Task and Plan agent defaults plus the four global task-flow prompts are
 persisted in git-ignored `data/settings.json`. When a prompt has no saved value, settings displays
 the matching built-in prompt from `src/lib/default-prompts/` in muted text; these defaults are read
 by the server-only `src/lib/default-settings-prompts.ts` module. Built-in and saved prompts may use
@@ -205,6 +207,14 @@ tasks in `.agent/tasks/` are archived by hand into
 - The `/plans` screen lists active plans across projects by default, with pagination plus project and status filters. Plans can be registered by hand, viewed and edited on a detail page, and deleted with optional removal of the plan file from disk. Every completed planning session automatically registers its final task file through `POST /api/plans` before its agent exits.
 - Projects are color-coded across project, task, plan, and lifecycle-log screens, with a palette color chosen on project create and detail forms.
 - The main navigation includes **Logs**, which opens `/logs` to show persisted task and plan lifecycle events newest first. The screen paginates events, resolves project chips and extant record links when possible, and safely reports unavailable or malformed lifecycle-log data.
+
+## Code Readability
+
+Keep code easy to scan and review. Do not compress multi-step logic, callbacks, or method
+bodies into a single long line merely to make the file shorter. Use conventional line breaks,
+indentation, and intermediate statements where they make control flow and side effects clear.
+When modifying or encountering existing densely packed one-line code, reformat it into readable
+multi-line code when doing so does not change behavior.
 
 ## Agent Harness Configuration
 

@@ -31,6 +31,11 @@ const unsubscribeFromWorkitemChanges = subscribeToWorkitemChanges((change) => {
 const sessions = new SessionRegistry({
   onOutput: (session, data) => broadcast({ type: "output", sessionId: session.id, data }),
   onExit: (session, code) => {
+    if (session.execution?.taskId) {
+      void markExitedExecutionTaskExecuted(session.execution.taskId).catch((error) => {
+        console.error(`Unable to mark execution task #${session.execution?.taskId} as executed after session exit`, error);
+      });
+    }
     broadcast({ type: "exit", sessionId: session.id, code });
     broadcastSessions();
   },
@@ -223,6 +228,28 @@ function send(socket: WebSocket, message: ServerMessage) {
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Could not start the selected agent.";
+}
+
+async function markExitedExecutionTaskExecuted(taskId: number) {
+  const endpoint = `http://127.0.0.1:${port}/api/tasks/${taskId}`;
+  const taskResponse = await fetch(endpoint);
+  if (!taskResponse.ok) {
+    throw new Error(`GET ${endpoint} returned ${taskResponse.status}.`);
+  }
+
+  const task = await taskResponse.json() as { status?: unknown };
+  if (task.status !== "executing") {
+    return;
+  }
+
+  const updateResponse = await fetch(endpoint, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status: "executed" }),
+  });
+  if (!updateResponse.ok) {
+    throw new Error(`PATCH ${endpoint} returned ${updateResponse.status}.`);
+  }
 }
 
 let shuttingDown = false;

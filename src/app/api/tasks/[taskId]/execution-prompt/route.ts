@@ -28,7 +28,7 @@ async function effectivePrompt(
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   context: RouteContext<"/api/tasks/[taskId]/execution-prompt">,
 ) {
   const { taskId: rawTaskId } = await context.params;
@@ -97,6 +97,7 @@ export async function GET(
       taskTitle: task.title,
       filePath: task.filePath,
       summary: task.summary,
+      taskEndpoint: `${new URL(request.url).origin}/api/tasks/${task.id}`,
     }),
   });
 }
