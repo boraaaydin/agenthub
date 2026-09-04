@@ -5,11 +5,35 @@ const execFile = promisify(execFileCallback);
 const COMMAND_TIMEOUT_MS = 5_000;
 const TAILSCALE_CANDIDATES = [
   ...(process.env.TAILSCALE_CLI ? [process.env.TAILSCALE_CLI] : []),
-  "tailscale",
-  "/opt/homebrew/bin/tailscale",
-  "/usr/local/bin/tailscale",
-  "/Applications/Tailscale.app/Contents/MacOS/Tailscale",
+  ...platformCandidates(),
 ];
+
+function platformCandidates(): string[] {
+  if (process.platform === "win32") {
+    return [
+      "tailscale.exe",
+      ...windowsInstallLocations(),
+    ];
+  }
+
+  return [
+    "tailscale",
+    "/opt/homebrew/bin/tailscale",
+    "/usr/local/bin/tailscale",
+    ...(process.platform === "darwin"
+      ? ["/Applications/Tailscale.app/Contents/MacOS/Tailscale"]
+      : []),
+  ];
+}
+
+function windowsInstallLocations(): string[] {
+  return [
+    process.env.ProgramFiles,
+    process.env["ProgramFiles(x86)"],
+  ].filter((directory): directory is string => Boolean(directory)).map(
+    (directory) => `${directory}\\Tailscale\\tailscale.exe`,
+  );
+}
 
 let cachedCliPath: string | null = null;
 

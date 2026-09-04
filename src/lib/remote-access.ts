@@ -14,6 +14,49 @@ export const REMOTE_ACCESS_METHODS = [
 export type RemoteAccessMethod = (typeof REMOTE_ACCESS_METHODS)[number];
 export type RemoteAccessMethodId = RemoteAccessMethod["id"];
 
+export type TailscaleInstallSupport =
+  | { kind: "automated" }
+  | { kind: "manual" };
+
+export type TailscalePlatform = "windows" | "macos" | "linux" | "other";
+
+export type TailscaleDownload = {
+  platformLabel: string;
+  url: string;
+  manualSteps: readonly string[];
+};
+
+const TAILSCALE_DOWNLOADS: Record<TailscalePlatform, TailscaleDownload> = {
+  windows: {
+    platformLabel: "Windows",
+    url: "https://tailscale.com/download/windows",
+    manualSteps: [
+      "Download and install Tailscale for Windows.",
+      "Open Tailscale and sign in to your tailnet.",
+      "Return here and refresh the status.",
+    ],
+  },
+  macos: {
+    platformLabel: "macOS",
+    url: "https://tailscale.com/download/mac",
+    manualSteps: [],
+  },
+  linux: {
+    platformLabel: "Linux",
+    url: "https://tailscale.com/download/linux",
+    manualSteps: [],
+  },
+  other: {
+    platformLabel: "your platform",
+    url: "https://tailscale.com/download",
+    manualSteps: [],
+  },
+};
+
+export function getTailscaleDownload(platform: TailscalePlatform): TailscaleDownload {
+  return TAILSCALE_DOWNLOADS[platform];
+}
+
 type RemoteAccessActionDefinition = {
   id: string;
   methodId: RemoteAccessMethodId;

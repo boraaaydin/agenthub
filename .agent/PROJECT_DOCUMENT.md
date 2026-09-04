@@ -176,6 +176,7 @@ server/
 ├── agents.ts                     # Server-only CLI command definitions
 ├── setup-commands.ts             # Allowlisted remote-access setup command definitions
 ├── tailscale-cli.ts              # Shared server-side Tailscale CLI resolver
+├── winget-cli.ts                 # Shared server-side Windows Package Manager resolver
 ├── ip-allowlist.ts               # Server-only IP/CIDR validation and BlockList construction
 ├── remote-ip-guard.ts            # Cached server-only incoming-connection allowlist
 ├── git-cli.ts                    # Shared server-side git CLI resolver
@@ -218,7 +219,7 @@ tasks in `.agent/tasks/` are archived by hand into
   the same PTY terminal, accept interactive input such as `sudo`, and close after successful setup
   with a modal that links back to remote-access settings; failed setup sessions remain available
   with their output and report the exit code.
-- Settings includes a **Remote access** screen with an extensible method catalog and an editable additional-IP allowlist. Loopback and Tailscale ranges are always allowed; saved IPv4/IPv6 addresses and CIDRs widen the incoming-connection boundary without a restart. Its Tailscale method detects installation and tailnet connection status, shows tailnet URLs when connected, and starts visible install or connect setup sessions when needed. AgentHub adds no authentication within the allowed boundary.
+- Settings includes a **Remote access** screen with an extensible method catalog and an editable additional-IP allowlist. Loopback and Tailscale ranges are always allowed; saved IPv4/IPv6 addresses and CIDRs widen the incoming-connection boundary without a restart. Its Tailscale method detects installation and tailnet connection status on macOS, Linux, and Windows, shows tailnet URLs when connected, and starts visible install or connect setup sessions when needed. AgentHub adds no authentication within the allowed boundary.
 - Every project has a persisted task list with server-side URL pagination; project deletion can
   explicitly remove its tasks or leave them in place.
 - Tasks can start a new console session for planning; the session uses the configured Plan agent

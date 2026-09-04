@@ -6,7 +6,13 @@ import { useState } from "react";
 
 import { LocalOnlyNotice } from "../../local-only-notice";
 import AllowedIpsSection from "./allowed-ips-section";
-import { REMOTE_ACCESS_METHODS, type RemoteAccessMethodId } from "@/lib/remote-access";
+import {
+  REMOTE_ACCESS_METHODS,
+  type RemoteAccessActionId,
+  type RemoteAccessMethodId,
+  type TailscaleDownload,
+  type TailscaleInstallSupport,
+} from "@/lib/remote-access";
 
 type TailscaleStatus =
   | { state: "not-installed" }
@@ -21,6 +27,8 @@ type RemoteAccessFormProps = {
   methods: { id: RemoteAccessMethodId; enabled: boolean }[];
   additionalAllowedIps: string[];
   tailscaleStatus: TailscaleStatus;
+  tailscaleInstallSupport: TailscaleInstallSupport;
+  tailscaleDownload: TailscaleDownload;
   port: string;
   canManage: boolean;
 };
@@ -29,6 +37,8 @@ export default function RemoteAccessForm({
   methods,
   additionalAllowedIps,
   tailscaleStatus,
+  tailscaleInstallSupport,
+  tailscaleDownload,
   port,
   canManage,
 }: RemoteAccessFormProps) {
@@ -132,6 +142,8 @@ export default function RemoteAccessForm({
 
             <TailscaleDetails
               status={tailscaleStatus}
+              installSupport={tailscaleInstallSupport}
+              download={tailscaleDownload}
               port={port}
               copiedUrl={copiedUrl}
               onCopy={copyUrl}
@@ -158,12 +170,16 @@ export default function RemoteAccessForm({
 
 function TailscaleDetails({
   status,
+  installSupport,
+  download,
   port,
   copiedUrl,
   onCopy,
   canManage,
 }: {
   status: TailscaleStatus;
+  installSupport: TailscaleInstallSupport;
+  download: TailscaleDownload;
   port: string;
   copiedUrl: string;
   onCopy: (url: string) => void;
@@ -190,36 +206,106 @@ function TailscaleDetails({
   }
 
   if (status.state === "not-installed") {
-    return <SetupState message="Tailscale is not installed on this machine." action="tailscale-install" label="Install Tailscale" canManage={canManage} />;
+    if (installSupport.kind === "manual") {
+      return <ManualInstallState download={download} />;
+    }
+    return (
+      <SetupState
+        message="Tailscale is not installed on this machine."
+        action="tailscale-install"
+        label="Install Tailscale"
+        download={download}
+        canManage={canManage}
+      />
+    );
   }
   if (status.state === "needs-login") {
-    return <SetupState message="Tailscale is installed but needs you to sign in or approve this machine." action="tailscale-connect" label="Connect" canManage={canManage} />;
+    return (
+      <SetupState
+        message="Tailscale is installed but needs you to sign in or approve this machine."
+        action="tailscale-connect"
+        label="Connect"
+        download={download}
+        canManage={canManage}
+      />
+    );
   }
   if (status.state === "stopped") {
-    return <SetupState message="Tailscale is installed but currently stopped." action="tailscale-connect" label="Connect" canManage={canManage} />;
+    return (
+      <SetupState
+        message="Tailscale is installed but currently stopped."
+        action="tailscale-connect"
+        label="Connect"
+        download={download}
+        canManage={canManage}
+      />
+    );
   }
   return <p role="alert" className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-800">{status.message}</p>;
+}
+
+function ManualInstallState({ download }: { download: TailscaleDownload }) {
+  return (
+    <div className="mt-6 border-t border-slate-200 pt-5">
+      <p className="text-sm leading-6 text-slate-600">
+        Tailscale is not installed and winget is unavailable on this machine.
+      </p>
+      <ol className="mt-4 list-decimal space-y-1 pl-5 text-sm leading-6 text-slate-600">
+        {download.manualSteps.map((step) => (
+          <li key={step}>{step}</li>
+        ))}
+      </ol>
+      <TailscaleDownloadLink download={download} className="mt-4" />
+    </div>
+  );
 }
 
 function SetupState({
   message,
   action,
   label,
+  download,
   canManage,
 }: {
   message: string;
-  action: string;
+  action: RemoteAccessActionId;
   label: string;
+  download: TailscaleDownload;
   canManage: boolean;
 }) {
   return (
     <div className="mt-6 border-t border-slate-200 pt-5">
       <p className="text-sm leading-6 text-slate-600">{message}</p>
-      {canManage && (
-        <Link href={`/console?setup=${action}`} className="mt-4 inline-flex h-10 items-center rounded-xl bg-sky-700 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-800 focus:outline-none focus:ring-3 focus:ring-sky-200">
-          {label}
-        </Link>
-      )}
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        {canManage && (
+          <Link
+            href={`/console?setup=${action}`}
+            className="inline-flex h-10 items-center rounded-xl bg-sky-700 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-800 focus:outline-none focus:ring-3 focus:ring-sky-200"
+          >
+            {label}
+          </Link>
+        )}
+        <TailscaleDownloadLink download={download} />
+      </div>
     </div>
+  );
+}
+
+function TailscaleDownloadLink({
+  download,
+  className = "",
+}: {
+  download: TailscaleDownload;
+  className?: string;
+}) {
+  return (
+    <a
+      href={download.url}
+      target="_blank"
+      rel="noreferrer"
+      className={`inline-flex h-10 items-center text-sm font-medium text-sky-700 transition hover:text-sky-900 focus:outline-none focus:ring-3 focus:ring-sky-100 ${className}`}
+    >
+      Download Tailscale for {download.platformLabel}
+    </a>
   );
 }

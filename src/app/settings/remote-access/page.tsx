@@ -1,9 +1,11 @@
 import { headers } from "next/headers";
 
 import RemoteAccessForm from "./remote-access-form";
+import { getTailscaleInstallSupport, getTailscalePlatform } from "../../../../server/setup-commands";
+import { getTailscaleDownload } from "@/lib/remote-access";
+import { isLocalClient } from "@/lib/request-origin";
 import { defaultSettings, readSettings, SettingsStoreError } from "@/lib/settings-store";
 import { readTailscaleStatus } from "@/lib/tailscale";
-import { isLocalClient } from "@/lib/request-origin";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +23,11 @@ export default async function RemoteAccessPage() {
       : "Settings could not be loaded. Reload this page and try again.";
   }
 
-  const tailscaleStatus = await readTailscaleStatus();
+  const [tailscaleStatus, tailscaleInstallSupport] = await Promise.all([
+    readTailscaleStatus(),
+    getTailscaleInstallSupport(),
+  ]);
+  const tailscaleDownload = getTailscaleDownload(getTailscalePlatform());
 
   return (
     <>
@@ -30,6 +36,8 @@ export default async function RemoteAccessPage() {
         methods={settings.remoteAccess.methods}
         additionalAllowedIps={settings.remoteAccess.additionalAllowedIps}
         tailscaleStatus={tailscaleStatus}
+        tailscaleInstallSupport={tailscaleInstallSupport}
+        tailscaleDownload={tailscaleDownload}
         port={process.env.PORT ?? "3000"}
         canManage={canManage}
       />
