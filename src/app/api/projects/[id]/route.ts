@@ -6,6 +6,7 @@ import {
   updateProject,
 } from "@/lib/projects-store";
 import { deleteProjectWorkitems, WorkitemStoreError } from "@/lib/workitems-store";
+import { requireLocalClient } from "@/lib/request-origin";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,11 @@ export async function PATCH(
   request: Request,
   context: RouteContext<"/api/projects/[id]">,
 ) {
+  const accessError = requireLocalClient(request);
+  if (accessError) {
+    return accessError;
+  }
+
   const { id } = await context.params;
   let input: unknown;
 
@@ -45,6 +51,11 @@ export async function DELETE(
   request: Request,
   context: RouteContext<"/api/projects/[id]">,
 ) {
+  const accessError = requireLocalClient(request);
+  if (accessError) {
+    return accessError;
+  }
+
   const { id } = await context.params;
   const deleteTasks = new URL(request.url).searchParams.get("deleteTasks") === "true";
 

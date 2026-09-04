@@ -17,6 +17,8 @@ import {
   ProjectValidationError,
 } from "@/lib/projects-store";
 import { readSettings, SettingsStoreError } from "@/lib/settings-store";
+import { requireLocalClient } from "@/lib/request-origin";
+import { isPathWithin } from "@/lib/session-paths";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +45,11 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const accessError = requireLocalClient(request);
+  if (accessError) {
+    return accessError;
+  }
+
   let input: unknown;
   try {
     input = await request.json();
@@ -180,7 +187,7 @@ function readSlug(value: unknown): string {
 function safeProjectPath(defaultProjectPath: string, slug: string): string {
   const root = path.resolve(defaultProjectPath);
   const target = path.resolve(root, slug);
-  if (!target.startsWith(`${root}${path.sep}`)) {
+  if (!isPathWithin(root, target)) {
     throw new ProjectCreationError("The project slug must stay inside the default project directory.");
   }
   return target;

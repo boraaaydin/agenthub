@@ -3,18 +3,22 @@
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 
+import { LocalOnlyNotice } from "../../local-only-notice";
+
 type ApiError = { error?: string };
 
 type ProjectsSettingsFormProps = {
   defaultProjectPath: string;
   initializeGitInNewProjects: boolean;
   gitAvailable: boolean;
+  canManage: boolean;
 };
 
 export default function ProjectsSettingsForm({
   defaultProjectPath: savedPath,
   initializeGitInNewProjects: savedInitializeGit,
   gitAvailable,
+  canManage,
 }: ProjectsSettingsFormProps) {
   const router = useRouter();
   const [defaultProjectPath, setDefaultProjectPath] = useState(savedPath);
@@ -51,6 +55,24 @@ export default function ProjectsSettingsForm({
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  if (!canManage) {
+    return (
+      <div className="space-y-6">
+        <LocalOnlyNotice />
+        <dl className="space-y-4 text-sm">
+          <div>
+            <dt className="font-medium text-slate-800">Default project directory</dt>
+            <dd className="mt-1 break-all font-mono text-slate-600">{savedPath || "Not set"}</dd>
+          </div>
+          <div>
+            <dt className="font-medium text-slate-800">Initialize git in new projects</dt>
+            <dd className="mt-1 text-slate-600">{savedInitializeGit ? "Enabled" : "Disabled"}</dd>
+          </div>
+        </dl>
+      </div>
+    );
   }
 
   return (

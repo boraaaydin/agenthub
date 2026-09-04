@@ -5,6 +5,7 @@ import {
   listProjectApplications,
 } from "@/lib/applications-store";
 import { getProject, ProjectStoreError } from "@/lib/projects-store";
+import { requireLocalClient } from "@/lib/request-origin";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,11 @@ export async function POST(
   request: Request,
   context: RouteContext<"/api/projects/[id]/applications">,
 ) {
+  const accessError = requireLocalClient(request);
+  if (accessError) {
+    return accessError;
+  }
+
   const { id } = await context.params;
   let input: unknown;
 

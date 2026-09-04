@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 
 import { BrandBar } from "../../brand-bar";
@@ -10,10 +11,12 @@ import {
 } from "@/lib/applications-store";
 import { getProject, ProjectStoreError } from "@/lib/projects-store";
 import { countProjectWorkitems, WorkitemStoreError } from "@/lib/workitems-store";
+import { isLocalClient } from "@/lib/request-origin";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProjectDetailPage(props: PageProps<"/projects/[id]">) {
+  const canManage = isLocalClient(await headers());
   const { id } = await props.params;
 
   let project;
@@ -67,5 +70,6 @@ export default async function ProjectDetailPage(props: PageProps<"/projects/[id]
     project={project}
     taskCount={taskCount}
     applications={applications}
+    canManage={canManage}
   />;
 }

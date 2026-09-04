@@ -1,12 +1,15 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 
 import { BrandBar } from "../brand-bar";
+import { LocalOnlyNotice } from "../local-only-notice";
 import { ProjectChip } from "../project-chip";
 import { listProjects, ProjectStoreError, type Project } from "@/lib/projects-store";
+import { isLocalClient } from "@/lib/request-origin";
 
 export const dynamic = "force-dynamic";
 
-function ProjectList({ projects }: { projects: Project[] }) {
+function ProjectList({ projects, canManage }: { projects: Project[]; canManage: boolean }) {
   if (projects.length === 0) {
     return (
       <section className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
@@ -14,12 +17,14 @@ function ProjectList({ projects }: { projects: Project[] }) {
         <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-600">
           Create a project to save a name and local working directory here.
         </p>
-        <Link
-          href="/projects/new"
-          className="mt-5 inline-flex h-11 items-center rounded-xl bg-sky-700 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-800 focus:outline-none focus:ring-3 focus:ring-sky-200"
-        >
-          New project
-        </Link>
+        {canManage && (
+          <Link
+            href="/projects/new"
+            className="mt-5 inline-flex h-11 items-center rounded-xl bg-sky-700 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-800 focus:outline-none focus:ring-3 focus:ring-sky-200"
+          >
+            New project
+          </Link>
+        )}
       </section>
     );
   }
@@ -53,6 +58,7 @@ function ProjectList({ projects }: { projects: Project[] }) {
 }
 
 export default async function ProjectsPage() {
+  const canManage = isLocalClient(await headers());
   let projects: Project[] = [];
   let error = "";
 
@@ -95,21 +101,25 @@ export default async function ProjectsPage() {
             >
               Tasks
             </Link>
-            <Link
-              href="/projects/new"
-              className="inline-flex h-11 items-center rounded-xl bg-sky-700 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-800 focus:outline-none focus:ring-3 focus:ring-sky-200"
-            >
-              New project
-            </Link>
+            {canManage && (
+              <Link
+                href="/projects/new"
+                className="inline-flex h-11 items-center rounded-xl bg-sky-700 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-800 focus:outline-none focus:ring-3 focus:ring-sky-200"
+              >
+                New project
+              </Link>
+            )}
           </div>
         </header>
+
+        {!canManage && <LocalOnlyNotice />}
 
         {error ? (
           <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
             {error}
           </p>
         ) : (
-          <ProjectList projects={projects} />
+          <ProjectList projects={projects} canManage={canManage} />
         )}
       </div>
     </main>

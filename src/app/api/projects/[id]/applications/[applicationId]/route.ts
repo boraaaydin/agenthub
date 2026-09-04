@@ -6,6 +6,7 @@ import {
   updateApplication,
 } from "@/lib/applications-store";
 import { getProject, ProjectStoreError } from "@/lib/projects-store";
+import { requireLocalClient } from "@/lib/request-origin";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,11 @@ async function findProjectApplication(context: Params) {
 }
 
 export async function PATCH(request: Request, context: Params) {
+  const accessError = requireLocalClient(request);
+  if (accessError) {
+    return accessError;
+  }
+
   let input: unknown;
   try {
     input = await request.json();
@@ -60,7 +66,12 @@ export async function PATCH(request: Request, context: Params) {
   }
 }
 
-export async function DELETE(_request: Request, context: Params) {
+export async function DELETE(request: Request, context: Params) {
+  const accessError = requireLocalClient(request);
+  if (accessError) {
+    return accessError;
+  }
+
   try {
     const result = await findProjectApplication(context);
     if (result.error) {

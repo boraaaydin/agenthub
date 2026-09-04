@@ -1,10 +1,14 @@
+import { headers } from "next/headers";
+
 import RemoteAccessForm from "./remote-access-form";
 import { defaultSettings, readSettings, SettingsStoreError } from "@/lib/settings-store";
 import { readTailscaleStatus } from "@/lib/tailscale";
+import { isLocalClient } from "@/lib/request-origin";
 
 export const dynamic = "force-dynamic";
 
 export default async function RemoteAccessPage() {
+  const canManage = isLocalClient(await headers());
   let settings = defaultSettings();
   let error = "";
 
@@ -26,6 +30,7 @@ export default async function RemoteAccessPage() {
         methods={settings.remoteAccess.methods}
         tailscaleStatus={tailscaleStatus}
         port={process.env.PORT ?? "3000"}
+        canManage={canManage}
       />
     </>
   );

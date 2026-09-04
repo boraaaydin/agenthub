@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 
 import { BrandBar } from "../../brand-bar";
+import { LocalOnlyNotice } from "../../local-only-notice";
 import { ProjectColorPicker } from "../project-color-picker";
 import { ProjectApplications, type ProjectApplication } from "./project-applications";
 import { projectColorToken, type ProjectColorToken } from "@/lib/project-colors";
@@ -23,10 +24,12 @@ export default function ProjectDetail({
   project,
   taskCount,
   applications,
+  canManage,
 }: {
   project: Project;
   taskCount: number;
   applications: ProjectApplication[];
+  canManage: boolean;
 }) {
   const router = useRouter();
   const [name, setName] = useState(project.name);
@@ -145,7 +148,8 @@ export default function ProjectDetail({
           </div>
         </header>
 
-        <form onSubmit={saveProject} className="mt-8 space-y-6" noValidate>
+        {canManage ? (
+          <form onSubmit={saveProject} className="mt-8 space-y-6" noValidate>
           <div>
             <label className="block text-sm font-medium text-slate-800" htmlFor="project-name">
               Project name
@@ -216,9 +220,27 @@ export default function ProjectDetail({
               Cancel
             </button>
           </div>
-        </form>
+          </form>
+        ) : (
+          <section className="mt-8 space-y-5" aria-labelledby="project-details">
+            <LocalOnlyNotice />
+            <div>
+              <h2 id="project-details" className="text-sm font-semibold text-slate-900">Project details</h2>
+              <dl className="mt-4 space-y-4 text-sm">
+                <div>
+                  <dt className="font-medium text-slate-700">Working directory</dt>
+                  <dd className="mt-1 break-all font-mono text-slate-600">{project.path}</dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-slate-700">Color</dt>
+                  <dd className="mt-1 text-slate-600">{projectColorToken(project.id, project.color)}</dd>
+                </div>
+              </dl>
+            </div>
+          </section>
+        )}
 
-        <ProjectApplications projectId={project.id} applications={applications} />
+        <ProjectApplications projectId={project.id} applications={applications} canManage={canManage} />
 
         <section className="mt-10 border-t border-slate-200 pt-6" aria-labelledby="project-metadata">
           <h2 id="project-metadata" className="text-sm font-semibold text-slate-900">Project metadata</h2>
@@ -236,7 +258,8 @@ export default function ProjectDetail({
           </dl>
         </section>
 
-        <section className="mt-10 border-t border-slate-200 pt-6" aria-labelledby="delete-project">
+        {canManage && (
+          <section className="mt-10 border-t border-slate-200 pt-6" aria-labelledby="delete-project">
           <h2 id="delete-project" className="text-sm font-semibold text-slate-900">Delete project</h2>
           <p className="mt-1 text-sm leading-6 text-slate-600">This only removes the saved project record. Your local files stay untouched.</p>
           {isDeleteConfirming ? (
@@ -300,7 +323,8 @@ export default function ProjectDetail({
               Delete project
             </button>
           )}
-        </section>
+          </section>
+        )}
       </div>
     </main>
   );

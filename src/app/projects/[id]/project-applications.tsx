@@ -16,9 +16,14 @@ type ApiError = { error?: string };
 type Props = {
   projectId: string;
   applications: ProjectApplication[];
+  canManage: boolean;
 };
 
-export function ProjectApplications({ projectId, applications: initialApplications }: Props) {
+export function ProjectApplications({
+  projectId,
+  applications: initialApplications,
+  canManage,
+}: Props) {
   const router = useRouter();
   const [applications, setApplications] = useState(initialApplications);
   const [newName, setNewName] = useState("");
@@ -142,7 +147,7 @@ export function ProjectApplications({ projectId, applications: initialApplicatio
         <ul className="mt-4 divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white">
           {applications.map((application) => (
             <li key={application.id} className="p-4">
-              {editingId === application.id ? (
+              {canManage && editingId === application.id ? (
                 <form onSubmit={(event) => saveApplication(event, application.id)} className="space-y-4" noValidate>
                   <div>
                     <label className="block text-sm font-medium text-slate-800" htmlFor={`application-name-${application.id}`}>
@@ -183,14 +188,16 @@ export function ProjectApplications({ projectId, applications: initialApplicatio
                     <h3 className="break-words text-sm font-semibold text-slate-900">{application.name}</h3>
                     <p className="mt-1 break-all font-mono text-sm leading-6 text-slate-600">{application.path}</p>
                   </div>
-                  <div className="flex shrink-0 flex-wrap gap-2">
-                    <button type="button" onClick={() => beginEdit(application)} disabled={isSaving} className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-800 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-3 focus:ring-sky-100 disabled:cursor-not-allowed disabled:bg-slate-100">
-                      Edit
-                    </button>
-                    <button type="button" onClick={() => void deleteApplication(application.id)} disabled={isSaving} className="h-9 rounded-lg border border-red-300 bg-white px-3 text-sm font-medium text-red-800 transition hover:border-red-400 hover:bg-red-50 focus:outline-none focus:ring-3 focus:ring-red-100 disabled:cursor-not-allowed disabled:bg-slate-100">
-                      Delete
-                    </button>
-                  </div>
+                  {canManage && (
+                    <div className="flex shrink-0 flex-wrap gap-2">
+                      <button type="button" onClick={() => beginEdit(application)} disabled={isSaving} className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-800 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-3 focus:ring-sky-100 disabled:cursor-not-allowed disabled:bg-slate-100">
+                        Edit
+                      </button>
+                      <button type="button" onClick={() => void deleteApplication(application.id)} disabled={isSaving} className="h-9 rounded-lg border border-red-300 bg-white px-3 text-sm font-medium text-red-800 transition hover:border-red-400 hover:bg-red-50 focus:outline-none focus:ring-3 focus:ring-red-100 disabled:cursor-not-allowed disabled:bg-slate-100">
+                        Delete
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </li>
@@ -204,7 +211,8 @@ export function ProjectApplications({ projectId, applications: initialApplicatio
         </p>
       )}
 
-      <form onSubmit={addApplication} className="mt-6 border-t border-slate-200 pt-6" noValidate>
+      {canManage && (
+        <form onSubmit={addApplication} className="mt-6 border-t border-slate-200 pt-6" noValidate>
         <h3 className="text-sm font-semibold text-slate-900">Add application</h3>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <div>
@@ -219,7 +227,8 @@ export function ProjectApplications({ projectId, applications: initialApplicatio
         <button type="submit" disabled={isSaving} className="mt-4 h-10 rounded-xl bg-sky-700 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-800 focus:outline-none focus:ring-3 focus:ring-sky-200 disabled:cursor-not-allowed disabled:bg-slate-300">
           {isSaving ? "Adding…" : "Add application"}
         </button>
-      </form>
+        </form>
+      )}
     </section>
   );
 }

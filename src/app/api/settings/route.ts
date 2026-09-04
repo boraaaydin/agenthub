@@ -4,6 +4,7 @@ import {
   SettingsStoreError,
   SettingsValidationError,
 } from "@/lib/settings-store";
+import { requireLocalClient } from "@/lib/request-origin";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,18 @@ export async function PUT(request: Request) {
     input = await request.json();
   } catch {
     return Response.json({ error: "Request body must be valid JSON." }, { status: 400 });
+  }
+
+  if (
+    input
+    && typeof input === "object"
+    && !Array.isArray(input)
+    && ("defaultProjectPath" in input || "initializeGitInNewProjects" in input)
+  ) {
+    const accessError = requireLocalClient(request);
+    if (accessError) {
+      return accessError;
+    }
   }
 
   try {

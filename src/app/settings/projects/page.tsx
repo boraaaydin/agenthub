@@ -1,10 +1,14 @@
+import { headers } from "next/headers";
+
 import ProjectsSettingsForm from "./projects-settings-form";
 import { isGitAvailable } from "@/lib/git";
 import { defaultSettings, readSettings, SettingsStoreError } from "@/lib/settings-store";
+import { isLocalClient } from "@/lib/request-origin";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProjectsSettingsPage() {
+  const canManage = isLocalClient(await headers());
   let settings = defaultSettings();
   let error = "";
 
@@ -32,6 +36,7 @@ export default async function ProjectsSettingsPage() {
         defaultProjectPath={settings.defaultProjectPath}
         initializeGitInNewProjects={settings.initializeGitInNewProjects}
         gitAvailable={gitAvailable}
+        canManage={canManage}
       />
     </>
   );

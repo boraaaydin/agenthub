@@ -86,7 +86,7 @@ The persisted work model uses **Workitems** for units of work and **Tasks** for 
 
 - Session persistence across a server restart (in-memory only vs. on disk).
 - Console sessions run in the directory of a selected saved application, falling back to the project directory for applicationless legacy projects.
-- Remote access ships with no authentication: the private tailnet is the boundary, while AgentHub continues to listen on every network interface.
+- Sessions may run only in a saved project or application path (or one of their subdirectories). Non-loopback clients can browse and run sessions in those paths, but cannot create, edit, or delete projects and applications; change path-related project settings; inspect directories; or start remote-access setup sessions.
 
 ## Tech Stack
 

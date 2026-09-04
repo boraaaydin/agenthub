@@ -2,10 +2,16 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 
 import { GitError, inspectGitDirectory } from "@/lib/git";
+import { requireLocalClient } from "@/lib/request-origin";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  const accessError = requireLocalClient(request);
+  if (accessError) {
+    return accessError;
+  }
+
   let input: unknown;
   try {
     input = await request.json();

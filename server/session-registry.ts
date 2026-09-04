@@ -19,6 +19,7 @@ import {
 } from "../src/lib/session-completion";
 import { getAgentCommand } from "./agents";
 import { getSetupCommand } from "./setup-commands";
+import { findAllowedRoot } from "../src/lib/session-paths";
 
 const MAX_BUFFER_SIZE = 200 * 1024;
 const MAX_SESSIONS = 12;
@@ -53,6 +54,7 @@ type SessionRegistryOptions = {
     code: number,
     summary: SessionSummary,
   ) => void;
+  listAllowedRoots: () => Promise<string[]>;
 };
 
 export class SessionRegistry {
@@ -104,6 +106,11 @@ export class SessionRegistry {
     execution?: SessionContext,
   ) {
     const cwd = await validateDirectory(cwdInput);
+    const roots = await this.options.listAllowedRoots();
+    if (!findAllowedRoot(cwd, roots)) {
+      throw new Error("Sessions can only run in a saved project or application directory.");
+    }
+
     return this.createSession(
       getAgentCommand(agent, initialPrompt),
       { kind: "agent", agent, cwd, completion, execution },

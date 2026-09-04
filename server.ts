@@ -8,6 +8,7 @@ import {
   type ServerMessage,
 } from "./src/lib/agent-protocol";
 import { subscribeToWorkitemChanges } from "./src/lib/workitem-events";
+import { CLIENT_ORIGIN_HEADER, isLoopbackAddress } from "./src/lib/request-origin";
 import { SessionRegistry } from "./server/session-registry";
 
 const port = Number.parseInt(process.env.PORT ?? "3000", 10);
@@ -15,6 +16,11 @@ const dev = process.env.NODE_ENV !== "production";
 const app = next({ dev });
 const handle = app.getRequestHandler();
 const httpServer = createServer((request, response) => {
+  delete request.headers[CLIENT_ORIGIN_HEADER];
+  request.headers[CLIENT_ORIGIN_HEADER] = isLoopbackAddress(request.socket.remoteAddress)
+    ? "local"
+    : "remote";
+
   void handle(request, response).catch((error) => {
     console.error("Next.js request handling failed", error);
     response.statusCode = 500;
@@ -23,6 +29,7 @@ const httpServer = createServer((request, response) => {
 });
 const socketServer = new WebSocketServer({ noServer: true });
 const clients = new Set<WebSocket>();
+const localSockets = new Map<WebSocket, boolean>();
 const unsubscribeFromWorkitemChanges = subscribeToWorkitemChanges((change) => {
   broadcast({ type: "workitem-changed", ...change });
 });
@@ -39,10 +46,12 @@ const sessions = new SessionRegistry({
     broadcast({ type: "exit", sessionId: session.id, code, session: summary });
     broadcastSessions();
   },
+  listAllowedRoots,
 });
 
-socketServer.on("connection", (socket) => {
+socketServer.on("connection", (socket, request) => {
   clients.add(socket);
+  localSockets.set(socket, isLoopbackAddress(request.socket.remoteAddress));
   send(socket, { type: "sessions", sessions: sessions.list() });
 
   socket.on("message", (raw) => {
@@ -54,8 +63,14 @@ socketServer.on("connection", (socket) => {
 
     void handleClientMessage(socket, message);
   });
-  socket.on("close", () => clients.delete(socket));
-  socket.on("error", () => clients.delete(socket));
+  socket.on("close", () => {
+    clients.delete(socket);
+    localSockets.delete(socket);
+  });
+  socket.on("error", () => {
+    clients.delete(socket);
+    localSockets.delete(socket);
+  });
 });
 
 httpServer.on("upgrade", (request, socket, head) => {
@@ -100,6 +115,14 @@ async function handleClientMessage(socket: WebSocket, message: ClientMessage) {
       return;
     }
     case "start-setup": {
+      if (!localSockets.get(socket)) {
+        send(socket, {
+          type: "error",
+          message: "Remote-access setup is only available on the machine running AgentHub.",
+        });
+        return;
+      }
+
       try {
         const session = await sessions.createSetup(message.action, message.cols, message.rows);
         send(socket, { type: "started", session: sessions.toSummary(session) });
@@ -234,6 +257,42 @@ function send(socket: WebSocket, message: ServerMessage) {
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Could not start the selected agent.";
+}
+
+async function listAllowedRoots(): Promise<string[]> {
+  const endpoint = `http://127.0.0.1:${port}/api/projects`;
+  const response = await fetch(endpoint);
+  if (!response.ok) {
+    throw new Error(`Could not load saved project directories (${response.status}).`);
+  }
+
+  const projects: unknown = await response.json();
+  if (!Array.isArray(projects)) {
+    throw new Error("Could not load saved project directories.");
+  }
+
+  return projects.flatMap((project) => {
+    if (!project || typeof project !== "object" || Array.isArray(project)) {
+      return [];
+    }
+
+    const record = project as { path?: unknown; applications?: unknown };
+    const roots = typeof record.path === "string" ? [record.path] : [];
+    if (!Array.isArray(record.applications)) {
+      return roots;
+    }
+
+    return roots.concat(
+      record.applications.flatMap((application) => (
+        application
+        && typeof application === "object"
+        && !Array.isArray(application)
+        && typeof (application as { path?: unknown }).path === "string"
+          ? [(application as { path: string }).path]
+          : []
+      )),
+    );
+  });
 }
 
 async function markExitedExecutionTaskExecuted(taskId: number) {

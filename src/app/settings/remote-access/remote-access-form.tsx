@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { LocalOnlyNotice } from "../../local-only-notice";
 import { REMOTE_ACCESS_METHODS, type RemoteAccessMethodId } from "@/lib/remote-access";
 
 type TailscaleStatus =
@@ -19,9 +20,15 @@ type RemoteAccessFormProps = {
   methods: { id: RemoteAccessMethodId; enabled: boolean }[];
   tailscaleStatus: TailscaleStatus;
   port: string;
+  canManage: boolean;
 };
 
-export default function RemoteAccessForm({ methods, tailscaleStatus, port }: RemoteAccessFormProps) {
+export default function RemoteAccessForm({
+  methods,
+  tailscaleStatus,
+  port,
+  canManage,
+}: RemoteAccessFormProps) {
   const router = useRouter();
   const [enabledMethods, setEnabledMethods] = useState(methods);
   const [isSaving, setIsSaving] = useState(false);
@@ -95,6 +102,8 @@ export default function RemoteAccessForm({ methods, tailscaleStatus, port }: Rem
         </button>
       </div>
 
+      {!canManage && <LocalOnlyNotice />}
+
       {REMOTE_ACCESS_METHODS.map((method) => {
         const enabled = enabledMethods.find((entry) => entry.id === method.id)?.enabled ?? false;
         return (
@@ -116,7 +125,13 @@ export default function RemoteAccessForm({ methods, tailscaleStatus, port }: Rem
               </label>
             </div>
 
-            <TailscaleDetails status={tailscaleStatus} port={port} copiedUrl={copiedUrl} onCopy={copyUrl} />
+            <TailscaleDetails
+              status={tailscaleStatus}
+              port={port}
+              copiedUrl={copiedUrl}
+              onCopy={copyUrl}
+              canManage={canManage}
+            />
           </section>
         );
       })}
@@ -136,11 +151,13 @@ function TailscaleDetails({
   port,
   copiedUrl,
   onCopy,
+  canManage,
 }: {
   status: TailscaleStatus;
   port: string;
   copiedUrl: string;
   onCopy: (url: string) => void;
+  canManage: boolean;
 }) {
   if (status.state === "connected") {
     const urls = [`http://${status.dnsName}:${port}`, `http://${status.ipv4}:${port}`];
@@ -163,24 +180,36 @@ function TailscaleDetails({
   }
 
   if (status.state === "not-installed") {
-    return <SetupState message="Tailscale is not installed on this machine." action="tailscale-install" label="Install Tailscale" />;
+    return <SetupState message="Tailscale is not installed on this machine." action="tailscale-install" label="Install Tailscale" canManage={canManage} />;
   }
   if (status.state === "needs-login") {
-    return <SetupState message="Tailscale is installed but needs you to sign in or approve this machine." action="tailscale-connect" label="Connect" />;
+    return <SetupState message="Tailscale is installed but needs you to sign in or approve this machine." action="tailscale-connect" label="Connect" canManage={canManage} />;
   }
   if (status.state === "stopped") {
-    return <SetupState message="Tailscale is installed but currently stopped." action="tailscale-connect" label="Connect" />;
+    return <SetupState message="Tailscale is installed but currently stopped." action="tailscale-connect" label="Connect" canManage={canManage} />;
   }
   return <p role="alert" className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-800">{status.message}</p>;
 }
 
-function SetupState({ message, action, label }: { message: string; action: string; label: string }) {
+function SetupState({
+  message,
+  action,
+  label,
+  canManage,
+}: {
+  message: string;
+  action: string;
+  label: string;
+  canManage: boolean;
+}) {
   return (
     <div className="mt-6 border-t border-slate-200 pt-5">
       <p className="text-sm leading-6 text-slate-600">{message}</p>
-      <Link href={`/console?setup=${action}`} className="mt-4 inline-flex h-10 items-center rounded-xl bg-sky-700 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-800 focus:outline-none focus:ring-3 focus:ring-sky-200">
-        {label}
-      </Link>
+      {canManage && (
+        <Link href={`/console?setup=${action}`} className="mt-4 inline-flex h-10 items-center rounded-xl bg-sky-700 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-800 focus:outline-none focus:ring-3 focus:ring-sky-200">
+          {label}
+        </Link>
+      )}
     </div>
   );
 }
