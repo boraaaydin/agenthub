@@ -14,6 +14,7 @@ import {
   type WorkitemStatus,
 } from "@/lib/workitem-filters";
 import { planConsoleHref } from "@/lib/plan-prompt";
+import { taskConsoleHref } from "@/lib/task-execution";
 
 type Workitem = {
   id: number;
@@ -32,9 +33,10 @@ type WorkitemDetailProps = {
   projectName: string;
   projectColor?: string;
   workitem: Workitem;
+  executableTaskId?: number | null;
 };
 
-export default function WorkitemDetail({ projectName, projectColor, workitem }: WorkitemDetailProps) {
+export default function WorkitemDetail({ projectName, projectColor, workitem, executableTaskId }: WorkitemDetailProps) {
   const router = useRouter();
   const workitemListPath = `/workitems?project=${encodeURIComponent(workitem.projectId)}`;
   const workitemApiPath = `/api/projects/${workitem.projectId}/workitems/${workitem.id}`;
@@ -192,6 +194,14 @@ export default function WorkitemDetail({ projectName, projectColor, workitem }: 
             >
               Create plan
             </Link>
+            {workitemStatus === "task_created" && executableTaskId != null && (
+              <Link
+                href={taskConsoleHref(executableTaskId)}
+                className="inline-flex h-10 items-center rounded-xl border border-sky-200 bg-white px-4 text-sm font-medium text-sky-800 shadow-sm transition hover:border-sky-300 hover:bg-sky-50 focus:outline-none focus:ring-3 focus:ring-sky-100"
+              >
+                Execute task
+              </Link>
+            )}
           </div>
         </header>
 

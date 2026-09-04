@@ -21,9 +21,9 @@ import {
   WORKITEM_STATUS_LABELS,
   workitemsHref,
 } from "@/lib/workitem-filters";
-import { taskDetailHref, taskStatusBadgeClass, taskStatusLabel } from "@/lib/task-filters";
 import { listLatestTasksByWorkitem, taskWorkitemKey, type LatestTasksByWorkitem } from "@/lib/tasks-store";
 import { planConsoleHref } from "@/lib/plan-prompt";
+import { taskConsoleHref } from "@/lib/task-execution";
 
 export const dynamic = "force-dynamic";
 
@@ -50,7 +50,6 @@ function WorkitemRows({
               <th scope="col" className="px-4 py-3 text-right sm:px-5">#</th>
               <th scope="col" className="min-w-56 px-4 py-3 sm:px-5">Title</th>
               <th scope="col" className="px-4 py-3 sm:px-5">Status</th>
-              <th scope="col" className="px-4 py-3 sm:px-5">Plan</th>
               <th scope="col" className="px-4 py-3 whitespace-nowrap sm:px-5">Created</th>
               <th scope="col" className="px-4 py-3 sm:px-5">Actions</th>
             </tr>
@@ -86,23 +85,6 @@ function WorkitemRows({
                       {WORKITEM_STATUS_LABELS[workitem.status]}
                     </span>
                   </td>
-                  <td className="px-4 py-4 align-top sm:px-5">
-                    {taskInfo ? (
-                      <div className="flex items-center gap-1.5">
-                        <Link
-                          href={taskDetailHref(taskInfo.task.id)}
-                          className={`inline-block rounded-md px-2 py-0.5 text-xs font-medium transition hover:opacity-80 focus:outline-none focus:ring-3 focus:ring-sky-100 ${taskStatusBadgeClass(taskInfo.task.status)}`}
-                        >
-                          {taskStatusLabel(taskInfo.task.status)}
-                        </Link>
-                        {taskInfo.taskCount > 1 && (
-                          <span className="text-xs text-slate-400">+{taskInfo.taskCount - 1}</span>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-slate-400">—</span>
-                    )}
-                  </td>
                   <td className="px-4 py-4 align-top whitespace-nowrap text-slate-500 sm:px-5">
                     <time dateTime={workitem.createdAt}>{workitemDate(workitem.createdAt)}</time>
                   </td>
@@ -110,6 +92,14 @@ function WorkitemRows({
                     {project && (
                       <div className="flex flex-wrap gap-2">
                         <WorkitemStatusButton projectId={workitem.projectId} workitemId={workitem.id} status={workitem.status} />
+                        {workitem.status === "task_created" && taskInfo && (
+                          <Link
+                            href={taskConsoleHref(taskInfo.task.id)}
+                            className="inline-flex h-9 items-center rounded-lg border border-sky-200 bg-white px-3 text-sm font-medium text-sky-800 shadow-sm transition hover:border-sky-300 hover:bg-sky-50 focus:outline-none focus:ring-3 focus:ring-sky-100"
+                          >
+                            Execute task
+                          </Link>
+                        )}
                         <Link
                           href={planConsoleHref(workitem.projectId, workitem.id)}
                           className="inline-flex h-9 items-center rounded-lg border border-sky-200 bg-white px-3 text-sm font-medium text-sky-800 shadow-sm transition hover:border-sky-300 hover:bg-sky-50 focus:outline-none focus:ring-3 focus:ring-sky-100"

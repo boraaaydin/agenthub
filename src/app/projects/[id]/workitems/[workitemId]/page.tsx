@@ -4,6 +4,7 @@ import { BrandBar } from "../../../../brand-bar";
 import WorkitemDetail from "./workitem-detail";
 import { getProject, ProjectStoreError } from "@/lib/projects-store";
 import { getWorkitem, WorkitemStoreError } from "@/lib/workitems-store";
+import { listLatestTasksByWorkitem, taskWorkitemKey } from "@/lib/tasks-store";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,7 @@ export default async function WorkitemDetailPage(props: PageProps<"/projects/[id
 
   let project;
   let workitem;
+  let executableTaskId: number | null = null;
   let error = "";
 
   try {
@@ -30,6 +32,15 @@ export default async function WorkitemDetailPage(props: PageProps<"/projects/[id
       : caughtError instanceof WorkitemStoreError
         ? "Workitem data could not be read. Check data/workitems.json and reload this page."
         : "Workitem details could not be loaded. Reload this page and try again.";
+  }
+
+  if (project && workitem) {
+    try {
+      const latestTasksByWorkitem = await listLatestTasksByWorkitem();
+      executableTaskId = latestTasksByWorkitem.get(taskWorkitemKey(id, parsedWorkitemId))?.task.id ?? null;
+    } catch (caughtError) {
+      console.error("Unable to load workitem task", caughtError);
+    }
   }
 
   if (!error && (!project || !workitem)) {
@@ -48,5 +59,5 @@ export default async function WorkitemDetailPage(props: PageProps<"/projects/[id
     );
   }
 
-  return <WorkitemDetail key={workitem.id} projectName={project.name} projectColor={project.color} workitem={workitem} />;
+  return <WorkitemDetail key={workitem.id} projectName={project.name} projectColor={project.color} workitem={workitem} executableTaskId={executableTaskId} />;
 }
