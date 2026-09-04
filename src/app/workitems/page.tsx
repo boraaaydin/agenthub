@@ -6,6 +6,8 @@ import { ProjectFilter } from "./project-filter";
 import { StatusFilter } from "./status-filter";
 import { WorkitemLiveUpdates } from "./workitem-live-updates";
 import { WorkitemStatusButton } from "./workitem-status-button";
+import { DeleteWorkitemTasksButton } from "./delete-workitem-tasks-button";
+import { WORKITEM_ACTION_LINK_CLASS } from "./action-button-styles";
 import { listProjects, ProjectStoreError } from "@/lib/projects-store";
 import {
   listAllWorkitems,
@@ -58,6 +60,9 @@ function WorkitemRows({
             {workitems.map((workitem) => {
               const project = projectNames.get(workitem.projectId);
               const taskInfo = tasksByWorkitem.get(taskWorkitemKey(workitem.projectId, workitem.id));
+              const canCreateTask = !taskInfo
+                && workitem.status !== "task_creating"
+                && workitem.status !== "task_created";
               const titleClass = `break-words font-medium ${workitem.status === "completed" ? "text-slate-500" : "text-slate-900"}`;
 
               return (
@@ -93,19 +98,20 @@ function WorkitemRows({
                       <div className="flex flex-wrap gap-2">
                         <WorkitemStatusButton projectId={workitem.projectId} workitemId={workitem.id} status={workitem.status} />
                         {workitem.status === "task_created" && taskInfo && (
-                          <Link
-                            href={taskConsoleHref(taskInfo.task.id)}
-                            className="inline-flex h-9 items-center rounded-lg border border-sky-200 bg-white px-3 text-sm font-medium text-sky-800 shadow-sm transition hover:border-sky-300 hover:bg-sky-50 focus:outline-none focus:ring-3 focus:ring-sky-100"
-                          >
+                          <Link href={taskConsoleHref(taskInfo.task.id)} className={WORKITEM_ACTION_LINK_CLASS}>
                             Execute task
                           </Link>
                         )}
-                        <Link
-                          href={planConsoleHref(workitem.projectId, workitem.id)}
-                          className="inline-flex h-9 items-center rounded-lg border border-sky-200 bg-white px-3 text-sm font-medium text-sky-800 shadow-sm transition hover:border-sky-300 hover:bg-sky-50 focus:outline-none focus:ring-3 focus:ring-sky-100"
-                        >
-                          Create plan
-                        </Link>
+                        {canCreateTask && (
+                          <Link href={planConsoleHref(workitem.projectId, workitem.id)} className={WORKITEM_ACTION_LINK_CLASS}>
+                            Create task
+                          </Link>
+                        )}
+                        <DeleteWorkitemTasksButton
+                          projectId={workitem.projectId}
+                          workitemId={workitem.id}
+                          taskCount={taskInfo?.taskCount ?? 0}
+                        />
                       </div>
                     )}
                   </td>

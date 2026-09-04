@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { WORKITEM_ACTION_NEUTRAL_CLASS } from "./action-button-styles";
 import type { WorkitemStatus } from "@/lib/workitem-filters";
 
 type WorkitemStatusButtonProps = {
@@ -55,11 +56,11 @@ export function WorkitemStatusButton({ projectId, workitemId, status }: Workitem
         type="button"
         onClick={toggleStatus}
         disabled={isSubmitting}
-        className="inline-flex h-9 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-800 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-3 focus:ring-sky-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+        className={WORKITEM_ACTION_NEUTRAL_CLASS}
       >
         {isSubmitting ? `${label}…` : label}
       </button>
-      {error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}
+      {error && <p role="alert" className="mt-2 text-xs text-red-700">{error}</p>}
     </div>
   );
 }

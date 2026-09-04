@@ -373,6 +373,35 @@ export async function listLatestTasksByWorkitem(): Promise<LatestTasksByWorkitem
   return latestTasksByWorkitem;
 }
 
+export async function listTasksForWorkitem(projectId: string, workitemId: number): Promise<Task[]> {
+  const { tasks } = await readDocument();
+  return tasks
+    .map(normalizeTask)
+    .filter((task) => task.projectId === projectId && task.workitemId === workitemId);
+}
+
+export async function deleteTasksForWorkitem(projectId: string, workitemId: number): Promise<Task[]> {
+  return serializeWrite(async () => {
+    const document = await readDocument();
+    const deletedTasks: Task[] = [];
+    const remainingTasks = document.tasks.filter((task) => {
+      if (task.projectId === projectId && task.workitemId === workitemId) {
+        deletedTasks.push(normalizeTask(task));
+        return false;
+      }
+      return true;
+    });
+
+    if (deletedTasks.length === 0) {
+      return deletedTasks;
+    }
+
+    document.tasks = remainingTasks;
+    await writeDocument(document);
+    return deletedTasks;
+  });
+}
+
 export async function listAllTasks({ page, pageSize, projectId, statuses, excludedWorkitemKeys }: PaginationInput): Promise<PaginatedTasks> {
   const { tasks } = await readDocument();
   const normalizedPage = normalizePage(page);

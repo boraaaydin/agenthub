@@ -18,6 +18,7 @@ export default async function WorkitemDetailPage(props: PageProps<"/projects/[id
   let project;
   let workitem;
   let executableTaskId: number | null = null;
+  let taskCount = 0;
   let error = "";
 
   try {
@@ -37,7 +38,9 @@ export default async function WorkitemDetailPage(props: PageProps<"/projects/[id
   if (project && workitem) {
     try {
       const latestTasksByWorkitem = await listLatestTasksByWorkitem();
-      executableTaskId = latestTasksByWorkitem.get(taskWorkitemKey(id, parsedWorkitemId))?.task.id ?? null;
+      const taskInfo = latestTasksByWorkitem.get(taskWorkitemKey(id, parsedWorkitemId));
+      executableTaskId = taskInfo?.task.id ?? null;
+      taskCount = taskInfo?.taskCount ?? 0;
     } catch (caughtError) {
       console.error("Unable to load workitem task", caughtError);
     }
@@ -59,5 +62,14 @@ export default async function WorkitemDetailPage(props: PageProps<"/projects/[id
     );
   }
 
-  return <WorkitemDetail key={workitem.id} projectName={project.name} projectColor={project.color} workitem={workitem} executableTaskId={executableTaskId} />;
+  return (
+    <WorkitemDetail
+      key={workitem.id}
+      projectName={project.name}
+      projectColor={project.color}
+      workitem={workitem}
+      executableTaskId={executableTaskId}
+      taskCount={taskCount}
+    />
+  );
 }

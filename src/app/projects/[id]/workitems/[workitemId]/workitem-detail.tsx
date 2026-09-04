@@ -6,6 +6,8 @@ import { type FormEvent, useState } from "react";
 
 import { BrandBar } from "../../../../brand-bar";
 import { ProjectChip } from "../../../../project-chip";
+import { WORKITEM_ACTION_LINK_CLASS } from "../../../../workitems/action-button-styles";
+import { DeleteWorkitemTasksButton } from "../../../../workitems/delete-workitem-tasks-button";
 import {
   WORKITEM_STATUSES,
   WORKITEM_STATUS_LABELS,
@@ -34,9 +36,10 @@ type WorkitemDetailProps = {
   projectColor?: string;
   workitem: Workitem;
   executableTaskId?: number | null;
+  taskCount?: number;
 };
 
-export default function WorkitemDetail({ projectName, projectColor, workitem, executableTaskId }: WorkitemDetailProps) {
+export default function WorkitemDetail({ projectName, projectColor, workitem, executableTaskId, taskCount = 0 }: WorkitemDetailProps) {
   const router = useRouter();
   const workitemListPath = `/workitems?project=${encodeURIComponent(workitem.projectId)}`;
   const workitemApiPath = `/api/projects/${workitem.projectId}/workitems/${workitem.id}`;
@@ -49,6 +52,8 @@ export default function WorkitemDetail({ projectName, projectColor, workitem, ex
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isStatusUpdating, setIsStatusUpdating] = useState(false);
   const [isDeleteConfirming, setIsDeleteConfirming] = useState(false);
+  const [workitemTaskCount, setWorkitemTaskCount] = useState(taskCount);
+  const canCreateTask = workitemTaskCount === 0 && workitemStatus !== "task_creating" && workitemStatus !== "task_created";
 
   function resetForm() {
     setTitle(workitem.title);
@@ -188,20 +193,27 @@ export default function WorkitemDetail({ projectName, projectColor, workitem, ex
               </select>
               {isStatusUpdating && <p role="status" className="mt-2 text-sm text-slate-600">Updating status…</p>}
             </div>
-            <Link
-              href={planConsoleHref(workitem.projectId, workitem.id)}
-              className="inline-flex h-10 items-center rounded-xl border border-sky-200 bg-white px-4 text-sm font-medium text-sky-800 shadow-sm transition hover:border-sky-300 hover:bg-sky-50 focus:outline-none focus:ring-3 focus:ring-sky-100"
-            >
-              Create plan
-            </Link>
+            {canCreateTask && (
+              <Link href={planConsoleHref(workitem.projectId, workitem.id)} className={WORKITEM_ACTION_LINK_CLASS}>
+                Create task
+              </Link>
+            )}
             {workitemStatus === "task_created" && executableTaskId != null && (
-              <Link
-                href={taskConsoleHref(executableTaskId)}
-                className="inline-flex h-10 items-center rounded-xl border border-sky-200 bg-white px-4 text-sm font-medium text-sky-800 shadow-sm transition hover:border-sky-300 hover:bg-sky-50 focus:outline-none focus:ring-3 focus:ring-sky-100"
-              >
+              <Link href={taskConsoleHref(executableTaskId)} className={WORKITEM_ACTION_LINK_CLASS}>
                 Execute task
               </Link>
             )}
+            <DeleteWorkitemTasksButton
+              projectId={workitem.projectId}
+              workitemId={workitem.id}
+              taskCount={workitemTaskCount}
+              onDeleted={(status) => {
+                setWorkitemTaskCount(0);
+                if (status) {
+                  setWorkitemStatus(status);
+                }
+              }}
+            />
           </div>
         </header>
 
