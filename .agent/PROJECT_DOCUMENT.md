@@ -51,7 +51,7 @@ Node server  ──  node-pty  ──  claude / codex / pi CLI process
   scrollback instead of seeing an empty screen. It is in-memory only; a server restart ends active
   sessions.
 
-Project metadata is persisted separately in a git-ignored `data/projects.json` file. Each project
+Project metadata is persisted separately in a git-ignored `data/projects.json` file. Each project has an optional persisted `slug`, used for `{{PROJECT_SLUG}}` when present. New projects either create `{defaultProjectPath}/{slug}` or use an inspected existing absolute directory. Newly created directories can be initialized as git repositories; existing repositories expose confirmed submodules as selectable application entries, with an optional root application. Each project
 can own one or more applications, persisted separately in git-ignored `data/applications.json`; an
 application has its own name and existing absolute working-directory path. Per-project workitems are persisted in git-ignored `data/workitems.json`, carry globally sequential integer ids
 starting at `1`, include a lifecycle status (`open`, `task_creating`, `task_created`, `in_progress`, `completed`, or `cancelled`) and optional completion timestamp, are listed in a semantic table with
@@ -68,7 +68,7 @@ execution sessions; it is retained with each in-memory session summary so the co
 contextual controls after a reload. Composed task-execution prompts instruct the agent to report
 completion through `PATCH /api/tasks/{id}`, while the custom server marks an execution session's
 task `executed` when that session exits. Global Task and Plan agent defaults plus the four global task-flow prompts are
-persisted in git-ignored `data/settings.json`, alongside an extensible `remoteAccess.methods` list of enabled remote-access methods. When a prompt has no saved value, settings displays
+persisted in git-ignored `data/settings.json`, alongside an extensible `remoteAccess.methods` list of enabled remote-access methods. Settings also keep `defaultProjectPath` (empty until configured) and `initializeGitInNewProjects` (true by default). The Projects settings screen controls these values; git initialization is offered only when a local git executable is available. When a prompt has no saved value, settings displays
 the matching built-in prompt from `src/lib/default-prompts/` in muted text; these defaults are read
 by the server-only `src/lib/default-settings-prompts.ts` module. Built-in and saved prompts may use
 `{{PROJECT_NAME}}` and `{{PROJECT_SLUG}}`, which are resolved for the session's project during prompt
@@ -123,6 +123,7 @@ The same rule is carried in the tool-managed `<!-- BEGIN:nextjs-agent-rules -->`
 ```
 src/app/                         # Next.js application
 ├── api/projects/                 # Route Handlers for persisted project metadata and applications
+│   ├── inspect-directory/         # Existing-directory git and submodule inspection
 │   └── [id]/                     # Nested application and workitem Route Handlers
 ├── api/settings/                 # Route Handler for global agent defaults
 ├── api/plans/                    # Route Handlers for plan registrations and detail CRUD
@@ -137,9 +138,11 @@ src/app/                         # Next.js application
 ├── projects/                     # Projects list, creation, and detail routes
 │   ├── page.tsx                  # Projects list page
 │   ├── project-color-picker.tsx  # Shared project color picker and chip preview
+│   ├── new/new-project-form.tsx  # Interactive two-mode project creation form
 │   └── [id]/                     # Editable project detail and task-detail routes
 │       └── tasks/                # Detail routes; list and creation redirect to /tasks
-├── settings/                     # Global agent defaults, remote access, and task-flow prompt settings
+├── settings/                     # Global agent defaults, project, remote-access, and task-flow prompt settings
+│   ├── projects/                 # Default project directory and git initialization settings
 │   └── remote-access/            # Tailscale status and remote-access controls
 ├── tasks/                        # Global task list, project filter, and unified task creation
 ├── plans/                        # Global plan list, creation, and detail routes
@@ -157,6 +160,7 @@ src/lib/
 ├── remote-access.ts              # Client-safe remote-access method and setup-action catalogs
 ├── session-completion.ts         # Shared session exit-policy types, validation, and outcome helpers
 ├── tailscale.ts                  # Server-only Tailscale CLI discovery and status probe
+├── git.ts                        # Server-only git availability, repository, and submodule helpers
 ├── applications-store.ts         # Persisted per-project application records
 ├── plans-store.ts                # Persisted editable plan records
 ├── plan-file.ts                  # Server-only safe plan file reader/deleter
@@ -166,6 +170,7 @@ server/
 ├── agents.ts                     # Server-only CLI command definitions
 ├── setup-commands.ts             # Allowlisted remote-access setup command definitions
 ├── tailscale-cli.ts              # Shared server-side Tailscale CLI resolver
+├── git-cli.ts                    # Shared server-side git CLI resolver
 └── session-registry.ts           # In-memory concurrent PTY session registry
 data/                             # Runtime JSON database (git-ignored: projects.json, applications.json, tasks.json, plans.json, lifecycle-log.json, settings.json)
 .agent/

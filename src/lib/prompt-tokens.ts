@@ -1,9 +1,10 @@
 export type ProjectPromptTokens = {
   projectName: string;
   projectPath: string;
+  projectSlug?: string;
 };
 
-function slugify(value: string): string {
+export function slugify(value: string): string {
   return value
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -17,8 +18,8 @@ function finalPathSegment(projectPath: string): string {
   return projectPath.trim().replace(/[\\/]+$/, "").split(/[\\/]/).at(-1) ?? "";
 }
 
-export function projectSlug({ projectName, projectPath }: ProjectPromptTokens): string {
-  return slugify(projectName) || slugify(finalPathSegment(projectPath)) || "project";
+export function projectSlug({ projectName, projectPath, projectSlug: savedSlug }: ProjectPromptTokens): string {
+  return savedSlug || slugify(projectName) || slugify(finalPathSegment(projectPath)) || "project";
 }
 
 export function applyPromptTokens(text: string, project: ProjectPromptTokens): string {

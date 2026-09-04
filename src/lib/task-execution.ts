@@ -38,7 +38,11 @@ function reportExecutionPrompt({ taskEndpoint }: Pick<ComposeTaskPromptOptions, 
 }
 
 export function composeTaskPrompt(options: ComposeTaskPromptOptions) {
-  const project = { projectName: options.projectName, projectPath: options.projectPath };
+  const project = {
+    projectName: options.projectName,
+    projectPath: options.projectPath,
+    projectSlug: options.projectSlug,
+  };
   const sections = [
     applyPromptTokens(options.taskPrompt.trim(), project),
     taskFileSection(options),

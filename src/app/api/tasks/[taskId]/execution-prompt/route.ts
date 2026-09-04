@@ -85,6 +85,7 @@ export async function GET(
     projectId: project.id,
     projectName: project.name,
     projectPath: project.path,
+    projectSlug: project.slug,
     workitemId: task.workitemId,
     filePath: task.filePath,
     prompt: composeTaskPrompt({
@@ -92,6 +93,7 @@ export async function GET(
       taskPostPrompt,
       projectName: project.name,
       projectPath: project.path,
+      projectSlug: project.slug,
       taskId: task.id,
       workitemId: task.workitemId,
       taskTitle: task.title,

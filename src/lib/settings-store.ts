@@ -20,6 +20,8 @@ export type RemoteAccessSettings = {
 export type Settings = {
   taskAgent: AgentId;
   planAgent: AgentId;
+  defaultProjectPath: string;
+  initializeGitInNewProjects: boolean;
   remoteAccess: RemoteAccessSettings;
 } & Record<SettingsPromptField, string>;
 
@@ -48,6 +50,8 @@ export function defaultSettings(): Settings {
     planPostPrompt: "",
     taskPrompt: "",
     taskPostPrompt: "",
+    defaultProjectPath: "",
+    initializeGitInNewProjects: true,
     remoteAccess: {
       methods: REMOTE_ACCESS_METHODS.map((method) => ({ id: method.id, enabled: false })),
     },
@@ -69,6 +73,19 @@ function parseDocument(value: unknown): Settings {
   }
 
   const settings = { ...defaultSettings(), taskAgent, planAgent };
+  if ("defaultProjectPath" in document) {
+    if (typeof document.defaultProjectPath !== "string") {
+      throw new SettingsStoreError(`Settings data in ${SETTINGS_FILE_PATH} has an invalid format.`);
+    }
+    const defaultProjectPath = document.defaultProjectPath.trim();
+    settings.defaultProjectPath = defaultProjectPath ? path.resolve(defaultProjectPath) : "";
+  }
+  if ("initializeGitInNewProjects" in document) {
+    if (typeof document.initializeGitInNewProjects !== "boolean") {
+      throw new SettingsStoreError(`Settings data in ${SETTINGS_FILE_PATH} has an invalid format.`);
+    }
+    settings.initializeGitInNewProjects = document.initializeGitInNewProjects;
+  }
   if ("remoteAccess" in document) {
     settings.remoteAccess = parseRemoteAccess(document.remoteAccess);
   }
@@ -85,7 +102,7 @@ function parseDocument(value: unknown): Settings {
   return settings;
 }
 
-function settingsDetails(input: unknown): SettingsUpdate {
+async function settingsDetails(input: unknown): Promise<SettingsUpdate> {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
     throw new SettingsValidationError("Settings update must be an object.");
   }
@@ -119,6 +136,37 @@ function settingsDetails(input: unknown): SettingsUpdate {
     }
   }
 
+  if ("defaultProjectPath" in document) {
+    if (typeof document.defaultProjectPath !== "string") {
+      throw new SettingsValidationError("Enter a project directory path as text.");
+    }
+    const projectPath = document.defaultProjectPath.trim();
+    if (!projectPath) {
+      update.defaultProjectPath = "";
+    } else {
+      const resolvedPath = path.resolve(projectPath);
+      try {
+        if (!(await fs.stat(resolvedPath)).isDirectory()) {
+          throw new SettingsValidationError("The default project directory must point to a directory.");
+        }
+      } catch (error) {
+        if (error instanceof SettingsValidationError) {
+          throw error;
+        }
+        if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+          throw new SettingsValidationError("The default project directory does not exist.");
+        }
+        throw new SettingsValidationError("The default project directory could not be accessed.");
+      }
+      update.defaultProjectPath = resolvedPath;
+    }
+  }
+  if ("initializeGitInNewProjects" in document) {
+    if (typeof document.initializeGitInNewProjects !== "boolean") {
+      throw new SettingsValidationError("Initialize git in new projects must be true or false.");
+    }
+    update.initializeGitInNewProjects = document.initializeGitInNewProjects;
+  }
   if ("remoteAccess" in document) {
     update.remoteAccess = validateRemoteAccess(document.remoteAccess);
   }
@@ -234,7 +282,7 @@ export async function readSettings(): Promise<Settings> {
 }
 
 export async function saveSettings(input: unknown): Promise<Settings> {
-  const update = settingsDetails(input);
+  const update = await settingsDetails(input);
 
   return serializeWrite(async () => {
     const settings = { ...await readDocument(), ...update };

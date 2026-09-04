@@ -36,7 +36,11 @@ function registerPlanPrompt({ projectId, workitemId, tasksEndpoint }: Pick<Compo
 }
 
 export function composePlanPrompt(options: ComposePlanPromptOptions): string {
-  const project = { projectName: options.projectName, projectPath: options.projectPath };
+  const project = {
+    projectName: options.projectName,
+    projectPath: options.projectPath,
+    projectSlug: options.projectSlug,
+  };
   const sections = [
     applyPromptTokens(options.planPrompt.trim(), project),
     `## Workitem #${options.workitemId}: ${options.taskTitle.trim()}\n\n${options.taskDetail.trim() || "No detail provided."}`,

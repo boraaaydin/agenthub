@@ -12,6 +12,7 @@ export type Project = {
   path: string;
   createdAt: string;
   color?: ProjectColorToken;
+  slug?: string;
 };
 
 type ProjectsDocument = {
@@ -37,7 +38,8 @@ function isProject(value: unknown): value is Project {
     typeof project.name === "string" &&
     typeof project.path === "string" &&
     typeof project.createdAt === "string" &&
-    (!("color" in project) || isProjectColorToken(project.color))
+    (!("color" in project) || isProjectColorToken(project.color)) &&
+    (!("slug" in project) || typeof project.slug === "string")
   );
 }
 
@@ -51,7 +53,8 @@ function isProjectRecord(value: unknown): value is Record<string, unknown> {
     typeof project.id === "string" &&
     typeof project.name === "string" &&
     typeof project.path === "string" &&
-    typeof project.createdAt === "string"
+    typeof project.createdAt === "string" &&
+    (!("slug" in project) || typeof project.slug === "string")
   );
 }
 
@@ -62,7 +65,13 @@ function normalizeProject(project: Record<string, unknown>): Project {
     path: project.path as string,
     createdAt: project.createdAt as string,
   };
-  return isProject(project) ? { ...normalized, ...(project.color ? { color: project.color } : {}) } : normalized;
+  return isProject(project)
+    ? {
+      ...normalized,
+      ...(project.color ? { color: project.color } : {}),
+      ...(project.slug ? { slug: project.slug } : {}),
+    }
+    : normalized;
 }
 
 function parseDocument(value: unknown): ProjectsDocument {
@@ -117,7 +126,12 @@ function serializeWrite<T>(operation: () => Promise<T>): Promise<T> {
   return result;
 }
 
-type ProjectDetails = { name: string; path: string; color?: ProjectColorToken | null };
+type ProjectDetails = {
+  name: string;
+  path: string;
+  color?: ProjectColorToken | null;
+  slug?: string;
+};
 
 function projectDetails(input: unknown): ProjectDetails {
   if (!input || typeof input !== "object") {
@@ -133,7 +147,12 @@ function projectDetails(input: unknown): ProjectDetails {
     throw new ProjectValidationError("Enter a working directory path.");
   }
 
-  const normalized = { name: name.trim(), path: path.resolve(projectPath.trim()) };
+  const slug = readSlug(details);
+  const normalized = {
+    name: name.trim(),
+    path: path.resolve(projectPath.trim()),
+    ...(slug ? { slug } : {}),
+  };
   if (!("color" in details) || details.color === undefined) {
     return normalized;
   }
@@ -144,6 +163,19 @@ function projectDetails(input: unknown): ProjectDetails {
     return { ...normalized, color: details.color };
   }
   throw new ProjectValidationError("Choose a color from the palette.");
+}
+
+function readSlug(details: Record<string, unknown>): string | undefined {
+  if (!("slug" in details) || details.slug === undefined) {
+    return undefined;
+  }
+  if (typeof details.slug !== "string" || !details.slug.trim()) {
+    throw new ProjectValidationError("Enter a project slug.");
+  }
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(details.slug.trim())) {
+    throw new ProjectValidationError("The project slug must use lowercase letters, numbers, and hyphens.");
+  }
+  return details.slug.trim();
 }
 
 async function validateDirectory(projectPath: string): Promise<void> {
@@ -185,6 +217,7 @@ export async function createProject(input: unknown): Promise<Project> {
       path: details.path,
       createdAt: new Date().toISOString(),
       ...(details.color ? { color: details.color } : {}),
+      ...(details.slug ? { slug: details.slug } : {}),
     };
 
     document.projects.push(project);
@@ -206,6 +239,9 @@ export async function updateProject(inputId: string, input: unknown): Promise<Pr
 
     project.name = details.name;
     project.path = details.path;
+    if (details.slug) {
+      project.slug = details.slug;
+    }
     if (details.color === null) {
       delete project.color;
     } else if (details.color) {
