@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 
@@ -44,15 +43,7 @@ export default async function ProjectDetailPage(props: PageProps<"/projects/[id]
       <main className="min-h-screen bg-[#f4f6fa] px-4 py-6 text-slate-900 sm:px-6 sm:py-10">
         <div className="mx-auto w-full max-w-2xl">
           <BrandBar />
-          <div className="mt-3">
-            <Link
-              href="/projects"
-              className="text-sm font-medium text-sky-700 transition hover:text-sky-900 focus:outline-none focus:ring-3 focus:ring-sky-100"
-            >
-              Projects
-            </Link>
-          </div>
-          <h1 className="mt-4 text-3xl font-semibold tracking-[-0.03em]">Project unavailable</h1>
+          <h1 className="mt-3 text-3xl font-semibold tracking-[-0.03em]">Project unavailable</h1>
           <p role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
             {message}
           </p>

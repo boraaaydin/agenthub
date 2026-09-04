@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 
@@ -118,34 +117,10 @@ export default function ProjectDetail({
   return (
     <main className="min-h-screen bg-[#f4f6fa] px-4 py-6 text-slate-900 sm:px-6 sm:py-10">
       <div className="mx-auto w-full max-w-2xl">
-        <header className="flex flex-col gap-4 border-b border-slate-200 pb-5 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <BrandBar />
-            <div className="mt-3">
-              <Link
-                href="/projects"
-                className="text-sm font-medium text-sky-700 transition hover:text-sky-900 focus:outline-none focus:ring-3 focus:ring-sky-100"
-              >
-                Projects
-              </Link>
-            </div>
-            <h1 className="mt-4 break-words text-3xl font-semibold tracking-[-0.03em]">{project.name}</h1>
-            <p className="mt-1 text-sm leading-6 text-slate-600">Update this project&apos;s local settings.</p>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <Link
-              href={`/tasks?project=${project.id}`}
-              className="h-11 rounded-xl border border-slate-300 bg-white px-4 py-3 text-center text-sm font-medium leading-none text-slate-800 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-3 focus:ring-sky-100"
-            >
-              Tasks
-            </Link>
-            <Link
-              href={`/console?projectId=${project.id}`}
-              className="h-11 rounded-xl border border-slate-300 bg-white px-4 py-3 text-center text-sm font-medium leading-none text-slate-800 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-3 focus:ring-sky-100"
-            >
-              Open console
-            </Link>
-          </div>
+        <header className="border-b border-slate-200 pb-5">
+          <BrandBar />
+          <h1 className="mt-3 break-words text-3xl font-semibold tracking-[-0.03em]">{project.name}</h1>
+          <p className="mt-1 text-sm leading-6 text-slate-600">Update this project&apos;s local settings.</p>
         </header>
 
         {canManage ? (
