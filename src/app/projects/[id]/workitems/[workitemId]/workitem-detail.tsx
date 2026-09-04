@@ -11,11 +11,14 @@ import {
   WORKITEM_ACTION_LINK_CLASS,
 } from "../../../../workitems/action-button-styles";
 import { DeleteWorkitemTasksButton } from "../../../../workitems/delete-workitem-tasks-button";
+import { WorkitemDependencyPicker } from "../../../../workitems/workitem-dependency-picker";
+import { WorkitemDependencySummary } from "../../../../workitems/workitem-dependency-summary";
 import {
   WORKITEM_STATUSES,
   WORKITEM_STATUS_LABELS,
   workitemStatusBadgeClass,
   workitemStatusLabel,
+  type WorkitemDependency,
   type WorkitemStatus,
 } from "@/lib/workitem-filters";
 import { planConsoleHref } from "@/lib/plan-prompt";
@@ -28,6 +31,7 @@ type Workitem = {
   detail: string;
   status: WorkitemStatus;
   completedAt: string | null;
+  dependencyIds: number[];
   createdAt: string;
   updatedAt: string;
 };
@@ -41,6 +45,8 @@ type WorkitemDetailProps = {
   executableTaskId?: number | null;
   taskCount?: number;
   hasApplications: boolean;
+  dependencies: WorkitemDependency[];
+  blockingDependencies: WorkitemDependency[];
 };
 
 export default function WorkitemDetail({
@@ -50,12 +56,15 @@ export default function WorkitemDetail({
   executableTaskId,
   taskCount = 0,
   hasApplications,
+  dependencies: initialDependencies,
+  blockingDependencies,
 }: WorkitemDetailProps) {
   const router = useRouter();
   const workitemListPath = `/workitems?project=${encodeURIComponent(workitem.projectId)}`;
   const workitemApiPath = `/api/projects/${workitem.projectId}/workitems/${workitem.id}`;
   const [title, setTitle] = useState(workitem.title);
   const [detail, setDetail] = useState(workitem.detail);
+  const [dependencies, setDependencies] = useState(initialDependencies);
   const [error, setError] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
   const [workitemStatus, setWorkitemStatus] = useState(workitem.status);
@@ -64,11 +73,15 @@ export default function WorkitemDetail({
   const [isStatusUpdating, setIsStatusUpdating] = useState(false);
   const [isDeleteConfirming, setIsDeleteConfirming] = useState(false);
   const [workitemTaskCount, setWorkitemTaskCount] = useState(taskCount);
-  const canCreateTask = workitemTaskCount === 0 && workitemStatus !== "task_creating" && workitemStatus !== "task_created";
+  const canCreateTask = workitemTaskCount === 0
+    && workitemStatus !== "task_creating"
+    && workitemStatus !== "task_created"
+    && blockingDependencies.length === 0;
 
   function resetForm() {
     setTitle(workitem.title);
     setDetail(workitem.detail);
+    setDependencies(initialDependencies);
     setError("");
     setStatusMessage("");
   }
@@ -122,7 +135,11 @@ export default function WorkitemDetail({
       const response = await fetch(workitemApiPath, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, detail }),
+        body: JSON.stringify({
+          title,
+          detail,
+          dependencyIds: dependencies.map((dependency) => dependency.id),
+        }),
       });
       const body = (await response.json()) as Workitem | ApiError;
 
@@ -230,6 +247,11 @@ export default function WorkitemDetail({
               }}
             />
           </div>
+          <WorkitemDependencySummary
+            projectId={workitem.projectId}
+            dependencies={initialDependencies}
+            blockingDependencies={blockingDependencies}
+          />
         </header>
 
         <form onSubmit={saveWorkitem} className="mt-8 space-y-6" noValidate>
@@ -247,6 +269,14 @@ export default function WorkitemDetail({
               className="mt-2 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-sky-600 focus:ring-3 focus:ring-sky-100 disabled:cursor-not-allowed disabled:bg-slate-100"
             />
           </div>
+
+          <WorkitemDependencyPicker
+            projectId={workitem.projectId}
+            currentWorkitemId={workitem.id}
+            selectedDependencies={dependencies}
+            onChange={setDependencies}
+            disabled={isSubmitting || isStatusUpdating}
+          />
 
           <div>
             <label className="block text-sm font-medium text-slate-800" htmlFor="workitem-detail">Detail</label>

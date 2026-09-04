@@ -4,7 +4,8 @@ import { BrandBar } from "../../../../brand-bar";
 import { listProjectApplications, ApplicationStoreError } from "@/lib/applications-store";
 import WorkitemDetail from "./workitem-detail";
 import { getProject, ProjectStoreError } from "@/lib/projects-store";
-import { getWorkitem, WorkitemStoreError } from "@/lib/workitems-store";
+import { getWorkitem, getWorkitemsByIds, WorkitemStoreError } from "@/lib/workitems-store";
+import { blockingDependencies, type WorkitemDependency } from "@/lib/workitem-filters";
 import { listLatestTasksByWorkitem, taskWorkitemKey } from "@/lib/tasks-store";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +22,8 @@ export default async function WorkitemDetailPage(props: PageProps<"/projects/[id
   let executableTaskId: number | null = null;
   let taskCount = 0;
   let hasApplications = false;
+  let dependencies: WorkitemDependency[] = [];
+  let blockingWorkitems: WorkitemDependency[] = [];
   let error = "";
 
   try {
@@ -29,6 +32,11 @@ export default async function WorkitemDetailPage(props: PageProps<"/projects/[id
       const applications = await listProjectApplications(id);
       hasApplications = applications.length > 0;
       workitem = await getWorkitem(id, parsedWorkitemId);
+      if (workitem) {
+        dependencies = await getWorkitemsByIds(id, workitem.dependencyIds);
+        const dependenciesById = new Map(dependencies.map((dependency) => [dependency.id, dependency]));
+        blockingWorkitems = blockingDependencies(workitem.dependencyIds, dependenciesById);
+      }
     }
   } catch (caughtError) {
     console.error("Unable to render project workitem", caughtError);
@@ -77,6 +85,8 @@ export default async function WorkitemDetailPage(props: PageProps<"/projects/[id
       executableTaskId={executableTaskId}
       taskCount={taskCount}
       hasApplications={hasApplications}
+      dependencies={dependencies}
+      blockingDependencies={blockingWorkitems}
     />
   );
 }

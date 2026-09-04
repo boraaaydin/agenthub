@@ -3,6 +3,7 @@ import { getProject, ProjectStoreError } from "@/lib/projects-store";
 import {
   createWorkitem,
   listProjectWorkitems,
+  searchProjectWorkitems,
   WorkitemStoreError,
   WorkitemValidationError,
   WORKITEMS_PAGE_SIZE,
@@ -22,6 +23,18 @@ function statusFromRequest(request: Request) {
   return isWorkitemStatus(status) ? status : undefined;
 }
 
+function searchFromRequest(request: Request): string | null {
+  return new URL(request.url).searchParams.get("q");
+}
+
+function excludedStatusesFromRequest(request: Request) {
+  return [...new Set(
+    new URL(request.url).searchParams
+      .getAll("excludeStatus")
+      .filter(isWorkitemStatus),
+  )];
+}
+
 export async function GET(
   request: Request,
   context: RouteContext<"/api/projects/[id]/workitems">,
@@ -32,6 +45,22 @@ export async function GET(
     const project = await getProject(id);
     if (!project) {
       return Response.json({ error: "Project not found." }, { status: 404 });
+    }
+
+    const query = searchFromRequest(request);
+    if (query !== null) {
+      const workitems = await searchProjectWorkitems(
+        id,
+        query,
+        excludedStatusesFromRequest(request),
+      );
+      return Response.json({
+        workitems,
+        page: 1,
+        pageSize: workitems.length,
+        total: workitems.length,
+        totalPages: 1,
+      });
     }
 
     const status = statusFromRequest(request);

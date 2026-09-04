@@ -23,13 +23,15 @@ export type Workitem = {
   detail: string;
   status: WorkitemStatus;
   completedAt: string | null;
+  dependencyIds: number[];
   createdAt: string;
   updatedAt: string;
 };
 
-type StoredWorkitem = Omit<Workitem, "status" | "completedAt"> & {
+type StoredWorkitem = Omit<Workitem, "status" | "completedAt" | "dependencyIds"> & {
   status?: WorkitemStatus | "plan_creating" | "plan_created";
   completedAt?: string | null;
+  dependencyIds?: number[];
 };
 
 type WorkitemsDocument = {
@@ -74,7 +76,11 @@ function isWorkitem(value: unknown): value is StoredWorkitem {
     typeof workitem.createdAt === "string" &&
     typeof workitem.updatedAt === "string" &&
     (workitem.status === undefined || isWorkitemStatus(workitem.status) || workitem.status === "plan_creating" || workitem.status === "plan_created") &&
-    (workitem.completedAt === undefined || workitem.completedAt === null || typeof workitem.completedAt === "string")
+    (workitem.completedAt === undefined || workitem.completedAt === null || typeof workitem.completedAt === "string") &&
+    (workitem.dependencyIds === undefined || (
+      Array.isArray(workitem.dependencyIds) &&
+      workitem.dependencyIds.every((dependencyId) => Number.isInteger(dependencyId) && dependencyId > 0)
+    ))
   );
 }
 
@@ -87,6 +93,7 @@ function normalizeWorkitem(workitem: StoredWorkitem): Workitem {
         ? "task_created"
         : workitem.status ?? DEFAULT_WORKITEM_STATUS,
     completedAt: workitem.completedAt ?? null,
+    dependencyIds: workitem.dependencyIds ?? [],
   };
 }
 
@@ -159,7 +166,52 @@ function workitemDetails(input: unknown): { title: string; detail: string } {
   return { title: title.trim(), detail };
 }
 
-type WorkitemPatch = Partial<Pick<Workitem, "title" | "detail" | "status">>;
+type WorkitemPatch = Partial<Pick<Workitem, "title" | "detail" | "status" | "dependencyIds">>;
+
+function dependencyIds(value: unknown): number[] {
+  if (!Array.isArray(value) || !value.every((dependencyId) => Number.isInteger(dependencyId) && dependencyId > 0)) {
+    throw new WorkitemValidationError("Workitem dependencies must be an array of positive workitem ids.");
+  }
+
+  return [...new Set(value)];
+}
+
+function validateDependencies(
+  workitems: StoredWorkitem[],
+  projectId: string,
+  workitemId: number,
+  proposedDependencyIds: number[],
+) {
+  const projectWorkitems = workitems.filter((workitem) => workitem.projectId === projectId);
+  const workitemsById = new Map(projectWorkitems.map((workitem) => [workitem.id, workitem]));
+
+  for (const dependencyId of proposedDependencyIds) {
+    if (dependencyId === workitemId) {
+      throw new WorkitemValidationError(`Workitem #${workitemId} cannot depend on itself.`);
+    }
+    if (!workitemsById.has(dependencyId)) {
+      throw new WorkitemValidationError(`Workitem dependency #${dependencyId} must be an existing workitem in this project.`);
+    }
+  }
+
+  const visited = new Set<number>();
+  const reachesWorkitem = (dependencyId: number): boolean => {
+    if (dependencyId === workitemId) {
+      return true;
+    }
+    if (visited.has(dependencyId)) {
+      return false;
+    }
+
+    visited.add(dependencyId);
+    const dependency = workitemsById.get(dependencyId);
+    return dependency?.dependencyIds?.some(reachesWorkitem) ?? false;
+  };
+
+  if (proposedDependencyIds.some(reachesWorkitem)) {
+    throw new WorkitemValidationError(`Workitem #${workitemId} cannot depend on a workitem that already depends on it.`);
+  }
+}
 
 function workitemPatch(input: unknown): WorkitemPatch {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
@@ -186,6 +238,9 @@ function workitemPatch(input: unknown): WorkitemPatch {
       throw new WorkitemValidationError("Select a valid workitem status.");
     }
     patch.status = values.status;
+  }
+  if (Object.hasOwn(values, "dependencyIds")) {
+    patch.dependencyIds = dependencyIds(values.dependencyIds);
   }
 
   if (Object.keys(patch).length === 0) {
@@ -244,6 +299,41 @@ export async function listWorkitemsByStatuses(statuses: readonly WorkitemStatus[
   return workitems.map(normalizeWorkitem).filter((workitem) => statuses.includes(workitem.status));
 }
 
+export async function getWorkitemsByIds(projectId: string, ids: readonly number[]): Promise<Workitem[]> {
+  const wantedIds = new Set(ids);
+  if (wantedIds.size === 0) {
+    return [];
+  }
+
+  const { workitems } = await readDocument();
+  return workitems
+    .filter((workitem) => workitem.projectId === projectId && wantedIds.has(workitem.id))
+    .map(normalizeWorkitem);
+}
+
+export async function searchProjectWorkitems(
+  projectId: string,
+  query: string,
+  excludedStatuses: readonly WorkitemStatus[] = [],
+  limit = 20,
+): Promise<Workitem[]> {
+  const normalizedQuery = query.trim().toLowerCase();
+  const idQuery = normalizedQuery.startsWith("#") ? normalizedQuery.slice(1) : normalizedQuery;
+  const resultLimit = Math.min(Math.max(Math.floor(limit), 1), 20);
+  const { workitems } = await readDocument();
+
+  return workitems
+    .map(normalizeWorkitem)
+    .filter((workitem) => workitem.projectId === projectId)
+    .filter((workitem) => !excludedStatuses.includes(workitem.status))
+    .filter((workitem) => !normalizedQuery || (
+      workitem.title.toLowerCase().includes(normalizedQuery) ||
+      String(workitem.id).includes(idQuery)
+    ))
+    .sort((first, second) => second.createdAt.localeCompare(first.createdAt))
+    .slice(0, resultLimit);
+}
+
 export async function getWorkitem(projectId: string, workitemId: number): Promise<Workitem | null> {
   const { workitems } = await readDocument();
   const workitem = workitems.find((candidate) => candidate.projectId === projectId && candidate.id === workitemId);
@@ -252,12 +342,17 @@ export async function getWorkitem(projectId: string, workitemId: number): Promis
 
 export async function createWorkitem(projectId: string, input: unknown): Promise<Workitem> {
   const details = workitemDetails(input);
+  const requestedDependencyIds = input && typeof input === "object" && Object.hasOwn(input, "dependencyIds")
+    ? dependencyIds((input as Record<string, unknown>).dependencyIds)
+    : [];
 
   return serializeWrite(async () => {
     const document = await readDocument();
     const now = new Date().toISOString();
     const nextId = document.workitems
       .reduce((highest, workitem) => Math.max(highest, workitem.id), 0) + 1;
+    validateDependencies(document.workitems, projectId, nextId, requestedDependencyIds);
+
     const workitem: Workitem = {
       id: nextId,
       projectId,
@@ -265,6 +360,7 @@ export async function createWorkitem(projectId: string, input: unknown): Promise
       detail: details.detail,
       status: "open",
       completedAt: null,
+      dependencyIds: requestedDependencyIds,
       createdAt: now,
       updatedAt: now,
     };
@@ -298,6 +394,10 @@ export async function updateWorkitem(projectId: string, workitemId: number, inpu
     }
     if (patch.detail !== undefined) {
       workitem.detail = patch.detail;
+    }
+    if (patch.dependencyIds !== undefined) {
+      validateDependencies(document.workitems, projectId, workitemId, patch.dependencyIds);
+      workitem.dependencyIds = patch.dependencyIds;
     }
     const previousStatus = workitem.status ?? DEFAULT_WORKITEM_STATUS;
     const statusChanged = patch.status !== undefined && patch.status !== previousStatus;
@@ -339,6 +439,11 @@ export async function deleteWorkitem(projectId: string, workitemId: number): Pro
     }
 
     const [deletedWorkitem] = document.workitems.splice(index, 1);
+    for (const workitem of document.workitems) {
+      if (workitem.projectId === projectId && workitem.dependencyIds?.includes(workitemId)) {
+        workitem.dependencyIds = workitem.dependencyIds.filter((dependencyId) => dependencyId !== workitemId);
+      }
+    }
     await writeDocument(document);
     return normalizeWorkitem(deletedWorkitem);
   });

@@ -6,7 +6,8 @@ import { readDefaultSettingsPrompt } from "@/lib/default-settings-prompts";
 import { getProject, ProjectStoreError } from "@/lib/projects-store";
 import { readSettings, SettingsStoreError } from "@/lib/settings-store";
 import { composePlanPrompt } from "@/lib/plan-prompt";
-import { getWorkitem, WorkitemStoreError } from "@/lib/workitems-store";
+import { getWorkitem, getWorkitemsByIds, WorkitemStoreError } from "@/lib/workitems-store";
+import { blockingDependencies, type WorkitemDependency } from "@/lib/workitem-filters";
 
 export const dynamic = "force-dynamic";
 
@@ -40,11 +41,17 @@ export async function GET(
   let workitem;
   let settings;
   let applications;
+  let blockedDependencies: WorkitemDependency[] | undefined;
 
   try {
     project = await getProject(id);
     if (project) {
       workitem = await getWorkitem(id, parsedWorkitemId);
+      if (workitem) {
+        const dependencies = await getWorkitemsByIds(id, workitem.dependencyIds);
+        const dependenciesById = new Map(dependencies.map((dependency) => [dependency.id, dependency]));
+        blockedDependencies = blockingDependencies(workitem.dependencyIds, dependenciesById);
+      }
       applications = await listProjectApplications(id);
     }
     if (!project || !workitem || !applications) {
@@ -63,6 +70,14 @@ export async function GET(
             : "Unable to prepare the plan. Try again.";
     console.error("Unable to prepare project workitem plan", error);
     return Response.json({ error: message }, { status: 500 });
+  }
+
+  if (blockedDependencies && blockedDependencies.length > 0) {
+    const names = blockedDependencies.map((dependency) => `#${dependency.id} · ${dependency.title}`).join(", ");
+    return Response.json(
+      { error: `The following workitem dependencies must be completed or cancelled before a task can be created: ${names}.` },
+      { status: 409 },
+    );
   }
 
   if (applications.length === 0) {

@@ -28,8 +28,29 @@ const WORKITEM_STATUS_BADGE_CLASSES: Record<WorkitemStatus, string> = {
   cancelled: "bg-slate-200 text-slate-700",
 };
 
+export type WorkitemDependency = {
+  id: number;
+  title: string;
+  status: WorkitemStatus;
+};
+
 export function isWorkitemStatus(value: unknown): value is WorkitemStatus {
   return typeof value === "string" && WORKITEM_STATUSES.includes(value as WorkitemStatus);
+}
+
+export function isDependencyFinished(status: WorkitemStatus): boolean {
+  return TERMINAL_WORKITEM_STATUSES.includes(status as (typeof TERMINAL_WORKITEM_STATUSES)[number]);
+}
+
+export function blockingDependencies(
+  dependencyIds: readonly number[],
+  dependenciesById: ReadonlyMap<number, WorkitemDependency>,
+): WorkitemDependency[] {
+  return dependencyIds
+    .map((dependencyId) => dependenciesById.get(dependencyId))
+    .filter((dependency): dependency is WorkitemDependency => (
+      dependency !== undefined && !isDependencyFinished(dependency.status)
+    ));
 }
 
 export function workitemStatusLabel(status: WorkitemStatus): string {

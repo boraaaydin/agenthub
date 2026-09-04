@@ -14,6 +14,7 @@ import {
 import { listApplications, ApplicationStoreError } from "@/lib/applications-store";
 import { listProjects, ProjectStoreError } from "@/lib/projects-store";
 import {
+  getWorkitemsByIds,
   listAllWorkitems,
   WorkitemStoreError,
   WORKITEMS_PAGE_SIZE,
@@ -23,8 +24,10 @@ import {
   ACTIVE_WORKITEM_STATUSES,
   newWorkitemHref,
   workitemFilterStatus,
+  blockingDependencies,
   workitemStatusBadgeClass,
   WORKITEM_STATUS_LABELS,
+  type WorkitemDependency,
   workitemsHref,
 } from "@/lib/workitem-filters";
 import { listLatestTasksByWorkitem, taskWorkitemKey, type LatestTasksByWorkitem } from "@/lib/tasks-store";
@@ -37,16 +40,22 @@ function workitemDate(value: string): string {
   return new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(value));
 }
 
+function dependencyKey(projectId: string, workitemId: number): string {
+  return `${projectId}:${workitemId}`;
+}
+
 function WorkitemRows({
   projectNames,
   workitems,
   tasksByWorkitem,
   applicationCounts,
+  dependencyWorkitemsByKey,
 }: {
   projectNames: Map<string, { name: string; color?: string }>;
   workitems: Workitem[];
   tasksByWorkitem: LatestTasksByWorkitem;
   applicationCounts: Map<string, number>;
+  dependencyWorkitemsByKey: Map<string, WorkitemDependency[]>;
 }) {
   return (
     <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -66,9 +75,13 @@ function WorkitemRows({
             {workitems.map((workitem) => {
               const project = projectNames.get(workitem.projectId);
               const taskInfo = tasksByWorkitem.get(taskWorkitemKey(workitem.projectId, workitem.id));
+              const dependencies = dependencyWorkitemsByKey.get(dependencyKey(workitem.projectId, workitem.id)) ?? [];
+              const dependenciesById = new Map(dependencies.map((dependency) => [dependency.id, dependency]));
+              const blockedDependencies = blockingDependencies(workitem.dependencyIds, dependenciesById);
               const canCreateTask = !taskInfo
                 && workitem.status !== "task_creating"
-                && workitem.status !== "task_created";
+                && workitem.status !== "task_created"
+                && blockedDependencies.length === 0;
               const titleClass = `break-words font-medium ${workitem.status === "completed" ? "text-slate-500" : "text-slate-900"}`;
               const hasApplications = (applicationCounts.get(workitem.projectId) ?? 0) > 0;
 
@@ -123,6 +136,21 @@ function WorkitemRows({
                           workitemId={workitem.id}
                           taskCount={taskInfo?.taskCount ?? 0}
                         />
+                        {blockedDependencies.length > 0 && (
+                          <span className={WORKITEM_ACTION_BLOCKED_CLASS}>
+                            Blocked by {blockedDependencies.map((dependency, index) => (
+                              <span key={dependency.id}>
+                                {index > 0 && ", "}
+                                <Link
+                                  href={`/projects/${workitem.projectId}/workitems/${dependency.id}`}
+                                  className="underline"
+                                >
+                                  #{dependency.id}
+                                </Link>
+                              </span>
+                            ))}
+                          </span>
+                        )}
                       </div>
                     )}
                   </td>
@@ -153,6 +181,7 @@ export default async function WorkitemsPage(props: PageProps<"/workitems">) {
   let selectedProjectId = "";
   let tasksByWorkitem: LatestTasksByWorkitem = new Map();
   let applicationCounts = new Map<string, number>();
+  let dependencyWorkitemsByKey = new Map<string, WorkitemDependency[]>();
   let error = "";
 
   try {
@@ -178,6 +207,35 @@ export default async function WorkitemsPage(props: PageProps<"/workitems">) {
           : [selectedStatus],
     });
     hasAnyWorkitems = (await listAllWorkitems({ page: 1, pageSize: 1 })).total > 0;
+
+    const dependencyIdsByProject = new Map<string, Set<number>>();
+    for (const workitem of workitemPage.workitems) {
+      const dependencyIds = dependencyIdsByProject.get(workitem.projectId) ?? new Set<number>();
+      for (const dependencyId of workitem.dependencyIds) {
+        dependencyIds.add(dependencyId);
+      }
+      dependencyIdsByProject.set(workitem.projectId, dependencyIds);
+    }
+
+    const dependencyResults = await Promise.all(
+      [...dependencyIdsByProject.entries()].map(async ([projectId, dependencyIds]) => [
+        projectId,
+        await getWorkitemsByIds(projectId, [...dependencyIds]),
+      ] as const),
+    );
+    const dependenciesByProject = new Map(
+      dependencyResults.map(([projectId, dependencies]) => [
+        projectId,
+        new Map(dependencies.map((dependency) => [dependency.id, dependency])),
+      ]),
+    );
+    dependencyWorkitemsByKey = new Map(workitemPage.workitems.map((workitem) => {
+      const dependenciesById = dependenciesByProject.get(workitem.projectId);
+      const dependencies = workitem.dependencyIds
+        .map((dependencyId) => dependenciesById?.get(dependencyId))
+        .filter((dependency): dependency is Workitem => dependency !== undefined);
+      return [dependencyKey(workitem.projectId, workitem.id), dependencies];
+    }));
   } catch (caughtError) {
     console.error("Unable to render workitems", caughtError);
     error = caughtError instanceof ProjectStoreError
@@ -264,7 +322,13 @@ export default async function WorkitemsPage(props: PageProps<"/workitems">) {
             ) : (
               <>
                 {workitemPage.workitems.length > 0 ? (
-                  <WorkitemRows projectNames={projectNames} workitems={workitemPage.workitems} tasksByWorkitem={tasksByWorkitem} applicationCounts={applicationCounts} />
+                  <WorkitemRows
+                    projectNames={projectNames}
+                    workitems={workitemPage.workitems}
+                    tasksByWorkitem={tasksByWorkitem}
+                    applicationCounts={applicationCounts}
+                    dependencyWorkitemsByKey={dependencyWorkitemsByKey}
+                  />
                 ) : (
                   <p className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
                     There are no workitems on this page.

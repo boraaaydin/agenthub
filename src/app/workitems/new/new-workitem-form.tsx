@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 
 import { BrandBar } from "../../brand-bar";
-import { workitemsHref, type WorkitemFilterStatus } from "@/lib/workitem-filters";
+import { WorkitemDependencyPicker } from "../workitem-dependency-picker";
+import { workitemsHref, type WorkitemDependency, type WorkitemFilterStatus } from "@/lib/workitem-filters";
 
 type Project = {
   id: string;
@@ -13,6 +14,8 @@ type Project = {
 };
 
 type ApiError = { error?: string };
+
+const EXCLUDED_DEPENDENCY_STATUSES = ["completed", "cancelled"] as const;
 
 type NewWorkitemFormProps = {
   projects: Project[];
@@ -26,6 +29,7 @@ export function NewWorkitemForm({ projects, initialProjectId, initialStatus, err
   const [projectId, setProjectId] = useState(initialProjectId);
   const [title, setTitle] = useState("");
   const [detail, setDetail] = useState("");
+  const [dependencies, setDependencies] = useState<WorkitemDependency[]>([]);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const workitemListPath = workitemsHref({ projectId, status: initialStatus });
@@ -48,7 +52,11 @@ export function NewWorkitemForm({ projects, initialProjectId, initialStatus, err
       const response = await fetch(`/api/projects/${encodeURIComponent(projectId)}/workitems`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, detail }),
+        body: JSON.stringify({
+          title,
+          detail,
+          dependencyIds: dependencies.map((dependency) => dependency.id),
+        }),
       });
       const body = (await response.json()) as ApiError;
 
@@ -106,7 +114,10 @@ export function NewWorkitemForm({ projects, initialProjectId, initialStatus, err
               <select
                 id="workitem-project"
                 value={projectId}
-                onChange={(event) => setProjectId(event.target.value)}
+                onChange={(event) => {
+                  setProjectId(event.target.value);
+                  setDependencies([]);
+                }}
                 disabled={isSubmitting}
                 className="mt-2 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-sky-600 focus:ring-3 focus:ring-sky-100 disabled:cursor-not-allowed disabled:bg-slate-100"
               >
@@ -129,6 +140,14 @@ export function NewWorkitemForm({ projects, initialProjectId, initialStatus, err
                 placeholder="Review the agent workflow"
               />
             </div>
+
+            <WorkitemDependencyPicker
+              projectId={projectId}
+              selectedDependencies={dependencies}
+              onChange={setDependencies}
+              excludedStatuses={EXCLUDED_DEPENDENCY_STATUSES}
+              disabled={isSubmitting}
+            />
 
             <div>
               <label className="block text-sm font-medium text-slate-800" htmlFor="workitem-detail">Detail</label>
