@@ -16,6 +16,10 @@ export default function NewProjectPage() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [projectPath, setProjectPath] = useState("");
+  const [applicationName, setApplicationName] = useState("");
+  const [applicationPath, setApplicationPath] = useState("");
+  const [isApplicationNameEdited, setIsApplicationNameEdited] = useState(false);
+  const [isApplicationPathEdited, setIsApplicationPathEdited] = useState(false);
   const [color, setColor] = useState<ProjectColorToken>(DEFAULT_PROJECT_COLOR);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -38,7 +42,12 @@ export default function NewProjectPage() {
       const response = await fetch("/api/projects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, path: projectPath, color }),
+        body: JSON.stringify({
+          name,
+          path: projectPath,
+          color,
+          application: { name: applicationName, path: applicationPath },
+        }),
       });
       const body = (await response.json()) as ApiError;
 
@@ -82,7 +91,13 @@ export default function NewProjectPage() {
             <input
               id="project-name"
               value={name}
-              onChange={(event) => setName(event.target.value)}
+              onChange={(event) => {
+                const nextName = event.target.value;
+                setName(nextName);
+                if (!isApplicationNameEdited) {
+                  setApplicationName(nextName);
+                }
+              }}
               autoComplete="off"
               disabled={isSubmitting}
               className="mt-2 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-sky-600 focus:ring-3 focus:ring-sky-100 disabled:cursor-not-allowed disabled:bg-slate-100"
@@ -97,7 +112,13 @@ export default function NewProjectPage() {
             <input
               id="project-path"
               value={projectPath}
-              onChange={(event) => setProjectPath(event.target.value)}
+              onChange={(event) => {
+                const nextPath = event.target.value;
+                setProjectPath(nextPath);
+                if (!isApplicationPathEdited) {
+                  setApplicationPath(nextPath);
+                }
+              }}
               autoComplete="off"
               disabled={isSubmitting}
               className="mt-2 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 font-mono text-sm outline-none transition focus:border-sky-600 focus:ring-3 focus:ring-sky-100 disabled:cursor-not-allowed disabled:bg-slate-100"
@@ -105,6 +126,49 @@ export default function NewProjectPage() {
             />
             <p className="mt-2 text-sm text-slate-600">The directory must already exist on this machine.</p>
           </div>
+
+          <fieldset className="border-t border-slate-200 pt-6">
+            <legend className="text-sm font-semibold text-slate-900">Default application</legend>
+            <p className="mt-1 text-sm leading-6 text-slate-600">
+              This creates the first codebase entry for the project. You can change it later.
+            </p>
+            <div className="mt-4 space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-slate-800" htmlFor="application-name">
+                  Application name
+                </label>
+                <input
+                  id="application-name"
+                  value={applicationName}
+                  onChange={(event) => {
+                    setApplicationName(event.target.value);
+                    setIsApplicationNameEdited(true);
+                  }}
+                  autoComplete="off"
+                  disabled={isSubmitting}
+                  className="mt-2 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-sky-600 focus:ring-3 focus:ring-sky-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+                  placeholder="Web app"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-800" htmlFor="application-path">
+                  Application working directory
+                </label>
+                <input
+                  id="application-path"
+                  value={applicationPath}
+                  onChange={(event) => {
+                    setApplicationPath(event.target.value);
+                    setIsApplicationPathEdited(true);
+                  }}
+                  autoComplete="off"
+                  disabled={isSubmitting}
+                  className="mt-2 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 font-mono text-sm outline-none transition focus:border-sky-600 focus:ring-3 focus:ring-sky-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+                  placeholder="/Users/you/Code/project/apps/web"
+                />
+              </div>
+            </div>
+          </fieldset>
 
           <ProjectColorPicker
             projectId="new-project"

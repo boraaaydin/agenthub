@@ -5,8 +5,11 @@ import { getAgent, type AgentId } from "@/lib/agents";
 import { getRemoteAccessAction } from "@/lib/remote-access";
 import type { SessionSummary } from "@/lib/agent-protocol";
 import { AgentLogo } from "./agent-logo";
-
-type SidebarProject = { id: string; path: string; name: string; color?: string };
+import {
+  resolveSessionProject,
+  sessionPathLabel,
+  type SessionProject,
+} from "./session-project";
 
 const AGENT_ACCENT_CLASSES: Record<AgentId, string> = {
   codex: "text-emerald-700",
@@ -14,17 +17,9 @@ const AGENT_ACCENT_CLASSES: Record<AgentId, string> = {
   pi: "text-violet-700",
 };
 
-function sessionProject(cwd: string, projects: SidebarProject[]) {
-  return projects.find((candidate) => candidate.path === cwd);
-}
-
-function sessionLabel(cwd: string, project?: SidebarProject) {
-  return project?.name ?? cwd.split("/").filter(Boolean).at(-1) ?? cwd;
-}
-
 type SessionSidebarProps = {
   sessions: SessionSummary[];
-  projects: SidebarProject[];
+  projects: SessionProject[];
   selectedSessionId: string | null;
   onSelect: (sessionId: string) => void;
   onNewSession: () => void;
@@ -62,8 +57,8 @@ export function SessionSidebar({
             {sessions.map((session) => {
               const selected = session.id === selectedSessionId;
               const exited = session.state === "exited";
-              const project = sessionProject(session.cwd, projects);
-              const projectName = sessionLabel(session.cwd, project);
+              const { project, application } = resolveSessionProject(session.cwd, projects);
+              const projectName = sessionPathLabel(session.cwd, project);
               const label = session.kind === "agent"
                 ? getAgent(session.agent).label
                 : getRemoteAccessAction(session.action).label;
@@ -101,12 +96,15 @@ export function SessionSidebar({
                     </span>
                     <span className="mt-1 block truncate text-xs text-slate-500">
                       {project ? (
-                        <ProjectChip
-                          projectId={project.id}
-                          name={project.name}
-                          color={project.color}
-                          className="inline-block max-w-full truncate align-middle"
-                        />
+                        <>
+                          <ProjectChip
+                            projectId={project.id}
+                            name={project.name}
+                            color={project.color}
+                            className="inline-block max-w-full truncate align-middle"
+                          />
+                          {application && <span> · {application.name}</span>}
+                        </>
                       ) : session.kind === "setup" ? "Remote access setup" : projectName}
                     </span>
                     <span className="mt-1 block text-xs text-slate-500">{exited ? "Exited" : "Live"}</span>

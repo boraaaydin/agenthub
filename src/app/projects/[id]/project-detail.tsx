@@ -6,6 +6,7 @@ import { type FormEvent, useState } from "react";
 
 import { BrandBar } from "../../brand-bar";
 import { ProjectColorPicker } from "../project-color-picker";
+import { ProjectApplications, type ProjectApplication } from "./project-applications";
 import { projectColorToken, type ProjectColorToken } from "@/lib/project-colors";
 
 type Project = {
@@ -18,7 +19,15 @@ type Project = {
 
 type ApiError = { error?: string };
 
-export default function ProjectDetail({ project, taskCount }: { project: Project; taskCount: number }) {
+export default function ProjectDetail({
+  project,
+  taskCount,
+  applications,
+}: {
+  project: Project;
+  taskCount: number;
+  applications: ProjectApplication[];
+}) {
   const router = useRouter();
   const [name, setName] = useState(project.name);
   const [projectPath, setProjectPath] = useState(project.path);
@@ -208,6 +217,8 @@ export default function ProjectDetail({ project, taskCount }: { project: Project
             </button>
           </div>
         </form>
+
+        <ProjectApplications projectId={project.id} applications={applications} />
 
         <section className="mt-10 border-t border-slate-200 pt-6" aria-labelledby="project-metadata">
           <h2 id="project-metadata" className="text-sm font-semibold text-slate-900">Project metadata</h2>

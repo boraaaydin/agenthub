@@ -49,8 +49,9 @@ Node server  ──  node-pty  ──  claude / codex / pi CLI process
   scrollback instead of seeing an empty screen. It is in-memory only; a server restart ends
   active sessions.
 
-Project metadata is persisted separately in a git-ignored `data/projects.json` file. Per-project
-workitems are persisted in git-ignored `data/workitems.json`, carry globally sequential integer ids
+Project metadata is persisted separately in a git-ignored `data/projects.json` file. Each project
+can own one or more applications, persisted separately in git-ignored `data/applications.json`; an
+application has its own name and existing absolute working-directory path. Per-project workitems are persisted in git-ignored `data/workitems.json`, carry globally sequential integer ids
 starting at `1`, include a lifecycle status (`open`, `task_creating`, `task_created`, `in_progress`, `completed`, or `cancelled`) and optional completion timestamp, are listed in a semantic table with
 server-side URL pagination and status filtering, and can be retained or removed when their
 project is deleted. A planning session moves an `open` task to `plan_creating`; registering its
@@ -70,8 +71,9 @@ the matching built-in prompt from `src/lib/default-prompts/` in muted text; thes
 by the server-only `src/lib/default-settings-prompts.ts` module. Built-in and saved prompts may use
 `{{PROJECT_NAME}}` and `{{PROJECT_SLUG}}`, which are resolved for the session's project during prompt
 composition. The code-defined agent catalog lives in
-`src/lib/agents.ts` and the prompt descriptors live in `src/lib/settings-prompts.ts`. The console selects a saved project and its agent per new session (Codex
-by default), while the settings remain available for future task and plan flows. These files
+`src/lib/agents.ts` and the prompt descriptors live in `src/lib/settings-prompts.ts`. The console selects a saved project, one of its applications, and its agent per new session (Codex
+by default). Applicationless legacy projects fall back to their project path until an application is
+added, while planning and task-execution sessions continue to use the project path. The settings remain available for future task and plan flows. These files
 survive server restarts; agent sessions remain in-memory only and end when the server restarts.
 Project records can be edited or deleted from their detail page. Each project may carry an optional palette color token; projects without one derive a stable color from their id, and the project name is shown as a white-on-color chip wherever it appears in project, task, and plan screens. Creating a plan from a task composes the effective Task planning and After planning prompts (saved text when present, otherwise the built-in Markdown defaults) with that task's title and detail plus a code-defined language rule, then starts the configured Plan agent in the task's project directory through the console.
 
@@ -82,7 +84,7 @@ The persisted work model uses **Workitems** for units of work and **Tasks** for 
 ## Open decisions
 
 - Session persistence across a server restart (in-memory only vs. on disk).
-- Console sessions run in the directory of a selected saved project.
+- Console sessions run in the directory of a selected saved application, falling back to the project directory for applicationless legacy projects.
 - Remote access ships with no authentication: the private tailnet is the boundary, while AgentHub continues to listen on every network interface.
 
 ## Tech Stack
@@ -118,8 +120,8 @@ The same rule is carried in the tool-managed `<!-- BEGIN:nextjs-agent-rules -->`
 
 ```
 src/app/                         # Next.js application
-├── api/projects/                 # Route Handlers for persisted project metadata
-│   └── [id]/tasks/               # Route Handlers for per-project tasks, including plan-prompt
+├── api/projects/                 # Route Handlers for persisted project metadata and applications
+│   └── [id]/                     # Nested application and workitem Route Handlers
 ├── api/settings/                 # Route Handler for global agent defaults
 ├── api/plans/                    # Route Handlers for plan registrations and detail CRUD
 │   └── [planId]/
@@ -151,6 +153,7 @@ src/lib/
 ├── prompt-tokens.ts              # Client-safe project prompt token resolution
 ├── remote-access.ts              # Client-safe remote-access method and setup-action catalogs
 ├── tailscale.ts                  # Server-only Tailscale CLI discovery and status probe
+├── applications-store.ts         # Persisted per-project application records
 ├── plans-store.ts                # Persisted editable plan records
 ├── plan-file.ts                  # Server-only safe plan file reader/deleter
 ├── project-colors.ts             # Client-safe palette tokens and deterministic project colors
@@ -160,7 +163,7 @@ server/
 ├── setup-commands.ts             # Allowlisted remote-access setup command definitions
 ├── tailscale-cli.ts              # Shared server-side Tailscale CLI resolver
 └── session-registry.ts           # In-memory concurrent PTY session registry
-data/                             # Runtime JSON database (git-ignored: projects.json, tasks.json, plans.json, lifecycle-log.json, settings.json)
+data/                             # Runtime JSON database (git-ignored: projects.json, applications.json, tasks.json, plans.json, lifecycle-log.json, settings.json)
 .agent/
 ├── PROJECT_DOCUMENT.md          # this file
 ├── commands/tasks/              # plan, do-task, do-task-post, common-plan-doc

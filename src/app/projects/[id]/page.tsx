@@ -3,6 +3,11 @@ import { notFound } from "next/navigation";
 
 import { BrandBar } from "../../brand-bar";
 import ProjectDetail from "./project-detail";
+import {
+  listProjectApplications,
+  ApplicationStoreError,
+  type Application,
+} from "@/lib/applications-store";
 import { getProject, ProjectStoreError } from "@/lib/projects-store";
 import { countProjectWorkitems, WorkitemStoreError } from "@/lib/workitems-store";
 
@@ -13,18 +18,24 @@ export default async function ProjectDetailPage(props: PageProps<"/projects/[id]
 
   let project;
   let taskCount = 0;
+  let applications: Application[] = [];
   try {
     project = await getProject(id);
     if (project) {
-      taskCount = await countProjectWorkitems(project.id);
+      [taskCount, applications] = await Promise.all([
+        countProjectWorkitems(project.id),
+        listProjectApplications(project.id),
+      ]);
     }
   } catch (error) {
     console.error("Unable to render project", error);
     const message = error instanceof ProjectStoreError
       ? "Project data could not be read. Check data/projects.json and reload this page."
-      : error instanceof WorkitemStoreError
-        ? "Task data could not be read. Check data/tasks.json and reload this page."
-        : "Project details could not be loaded. Reload this page and try again.";
+      : error instanceof ApplicationStoreError
+        ? "Application data could not be read. Check data/applications.json and reload this page."
+        : error instanceof WorkitemStoreError
+          ? "Task data could not be read. Check data/tasks.json and reload this page."
+          : "Project details could not be loaded. Reload this page and try again.";
 
     return (
       <main className="min-h-screen bg-[#f4f6fa] px-4 py-6 text-slate-900 sm:px-6 sm:py-10">
@@ -51,5 +62,10 @@ export default async function ProjectDetailPage(props: PageProps<"/projects/[id]
     notFound();
   }
 
-  return <ProjectDetail key={project.id} project={project} taskCount={taskCount} />;
+  return <ProjectDetail
+    key={project.id}
+    project={project}
+    taskCount={taskCount}
+    applications={applications}
+  />;
 }

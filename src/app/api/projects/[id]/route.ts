@@ -1,3 +1,4 @@
+import { deleteProjectApplications, ApplicationStoreError } from "@/lib/applications-store";
 import {
   deleteProject,
   ProjectStoreError,
@@ -52,6 +53,7 @@ export async function DELETE(
     if (!project) {
       return Response.json({ error: "Project not found." }, { status: 404 });
     }
+    await deleteProjectApplications(id);
     if (deleteTasks) {
       await deleteProjectWorkitems(id);
     }
@@ -59,9 +61,11 @@ export async function DELETE(
   } catch (error) {
     const message = error instanceof ProjectStoreError
       ? "Project data could not be updated. Check data/projects.json and try again."
-      : error instanceof WorkitemStoreError
-        ? "Task data could not be updated. Check data/tasks.json and try again."
-        : "Unable to delete the project. Try again.";
+      : error instanceof ApplicationStoreError
+        ? "Application data could not be updated. Check data/applications.json and try again."
+        : error instanceof WorkitemStoreError
+          ? "Task data could not be updated. Check data/tasks.json and try again."
+          : "Unable to delete the project. Try again.";
     console.error("Unable to delete project", error);
     return Response.json({ error: message }, { status: 500 });
   }
