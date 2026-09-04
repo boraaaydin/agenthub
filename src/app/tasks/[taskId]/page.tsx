@@ -3,8 +3,8 @@ import { notFound } from "next/navigation";
 import { BrandBar } from "../../brand-bar";
 import TaskDetail from "./task-detail";
 import { readTaskFile } from "@/lib/task-file";
-import { getProject, listProjects, ProjectStoreError } from "@/lib/projects-store";
-import { getTask, listAllTasks, TaskStoreError } from "@/lib/tasks-store";
+import { getProject, ProjectStoreError } from "@/lib/projects-store";
+import { getTask, TaskStoreError } from "@/lib/tasks-store";
 
 export const dynamic = "force-dynamic";
 
@@ -21,10 +21,8 @@ export default async function TaskDetailPage(props: PageProps<"/tasks/[taskId]">
   }
 
   let task: Awaited<ReturnType<typeof getTask>> = null;
-  let projects: { id: string; name: string; color?: string }[] = [];
-  let tasksByProject: Record<string, { id: number; title: string }[]> = {};
+  let project: { id: string; name: string; color?: string } | null = null;
   let projectPath: string | null = null;
-  let taskExists = false;
   let filePreview: Parameters<typeof TaskDetail>[0]["filePreview"] = { status: "missing-project" };
   let error = "";
 
@@ -34,20 +32,15 @@ export default async function TaskDetailPage(props: PageProps<"/tasks/[taskId]">
       notFound();
     }
 
-    const [project, savedProjects, taskPage] = await Promise.all([
-      getProject(task.projectId),
-      listProjects(),
-      listAllTasks({ page: 1, pageSize: 500 }),
-    ]);
-    taskExists = Boolean(project);
-    projects = savedProjects.map(({ id, name, color }) => ({ id, name, color }));
-    tasksByProject = taskPage.tasks.reduce<Record<string, { id: number; title: string }[]>>((groups, task) => {
-      (groups[task.projectId] ??= []).push({ id: task.id, title: task.title });
-      return groups;
-    }, {});
-    if (project) {
-      projectPath = project.path;
-      filePreview = await readTaskFile(project.path, task.filePath);
+    const savedProject = await getProject(task.projectId);
+    if (savedProject) {
+      project = {
+        id: savedProject.id,
+        name: savedProject.name,
+        ...(savedProject.color ? { color: savedProject.color } : {}),
+      };
+      projectPath = savedProject.path;
+      filePreview = await readTaskFile(savedProject.path, task.filePath);
     }
   } catch (caughtError) {
     console.error("Unable to render task", caughtError);
@@ -55,9 +48,7 @@ export default async function TaskDetailPage(props: PageProps<"/tasks/[taskId]">
       ? "Task data could not be read. Check data/tasks.json and reload this page."
       : caughtError instanceof ProjectStoreError
         ? "Project data could not be read. Check data/projects.json and reload this page."
-        : caughtError instanceof TaskStoreError
-          ? "Task data could not be read. Check data/tasks.json and reload this page."
-          : "Task details could not be loaded. Reload this page and try again.";
+        : "Task details could not be loaded. Reload this page and try again.";
   }
 
   if (!error && !task) {
@@ -76,5 +67,13 @@ export default async function TaskDetailPage(props: PageProps<"/tasks/[taskId]">
     );
   }
 
-  return <TaskDetail key={task.id} task={task} projects={projects} tasksByProject={tasksByProject} taskExists={taskExists} filePreview={filePreview} projectPath={projectPath} />;
+  return (
+    <TaskDetail
+      key={task.id}
+      task={task}
+      project={project}
+      filePreview={filePreview}
+      projectPath={projectPath}
+    />
+  );
 }
