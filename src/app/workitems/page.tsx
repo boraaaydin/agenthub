@@ -7,6 +7,7 @@ import { StatusFilter } from "./status-filter";
 import { WorkitemLiveUpdates } from "./workitem-live-updates";
 import { WorkitemStatusButton } from "./workitem-status-button";
 import { DeleteWorkitemTasksButton } from "./delete-workitem-tasks-button";
+import { PromoteWorkitemButton } from "./promote-workitem-button";
 import {
   WORKITEM_ACTION_BLOCKED_CLASS,
   WORKITEM_ACTION_LINK_CLASS,
@@ -25,6 +26,8 @@ import {
   newWorkitemHref,
   workitemFilterStatus,
   blockingDependencies,
+  workitemKindBadgeClass,
+  workitemKindLabel,
   workitemStatusBadgeClass,
   WORKITEM_STATUS_LABELS,
   type WorkitemDependency,
@@ -78,7 +81,9 @@ function WorkitemRows({
               const dependencies = dependencyWorkitemsByKey.get(dependencyKey(workitem.projectId, workitem.id)) ?? [];
               const dependenciesById = new Map(dependencies.map((dependency) => [dependency.id, dependency]));
               const blockedDependencies = blockingDependencies(workitem.dependencyIds, dependenciesById);
-              const canCreateTask = !taskInfo
+              const isDraft = workitem.kind === "draft";
+              const canCreateTask = !isDraft
+                && !taskInfo
                 && workitem.status !== "task_creating"
                 && workitem.status !== "task_created"
                 && blockedDependencies.length === 0;
@@ -106,9 +111,16 @@ function WorkitemRows({
                     )}
                   </td>
                   <td className="px-4 py-4 align-top sm:px-5">
-                    <span className={`inline-block rounded-md px-2 py-0.5 text-xs font-medium ${workitemStatusBadgeClass(workitem.status)}`}>
-                      {WORKITEM_STATUS_LABELS[workitem.status]}
-                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {isDraft && (
+                        <span className={`inline-block rounded-md px-2 py-0.5 text-xs font-medium ${workitemKindBadgeClass(workitem.kind)}`}>
+                          {workitemKindLabel(workitem.kind)}
+                        </span>
+                      )}
+                      <span className={`inline-block rounded-md px-2 py-0.5 text-xs font-medium ${workitemStatusBadgeClass(workitem.status)}`}>
+                        {WORKITEM_STATUS_LABELS[workitem.status]}
+                      </span>
+                    </div>
                   </td>
                   <td className="px-4 py-4 align-top whitespace-nowrap text-slate-500 sm:px-5">
                     <time dateTime={workitem.createdAt}>{workitemDate(workitem.createdAt)}</time>
@@ -116,8 +128,17 @@ function WorkitemRows({
                   <td className="px-4 py-4 align-top sm:px-5">
                     {project && (
                       <div className="flex flex-wrap gap-2">
-                        <WorkitemStatusButton projectId={workitem.projectId} workitemId={workitem.id} status={workitem.status} />
-                        {workitem.status === "task_created" && taskInfo && (
+                        {!isDraft && (
+                          <WorkitemStatusButton projectId={workitem.projectId} workitemId={workitem.id} status={workitem.status} />
+                        )}
+                        {isDraft ? (
+                          <PromoteWorkitemButton
+                            projectId={workitem.projectId}
+                            workitemId={workitem.id}
+                            canCreateTask={blockedDependencies.length === 0}
+                            hasApplications={hasApplications}
+                          />
+                        ) : workitem.status === "task_created" && taskInfo && (
                           <Link href={taskConsoleHref(taskInfo.task.id)} className={WORKITEM_ACTION_LINK_CLASS}>
                             Execute task
                           </Link>
@@ -131,12 +152,14 @@ function WorkitemRows({
                             Add an application in <Link href={`/projects/${workitem.projectId}`} className="underline">project settings</Link> to create tasks
                           </span>
                         ))}
-                        <DeleteWorkitemTasksButton
-                          projectId={workitem.projectId}
-                          workitemId={workitem.id}
-                          taskCount={taskInfo?.taskCount ?? 0}
-                        />
-                        {blockedDependencies.length > 0 && (
+                        {!isDraft && (
+                          <DeleteWorkitemTasksButton
+                            projectId={workitem.projectId}
+                            workitemId={workitem.id}
+                            taskCount={taskInfo?.taskCount ?? 0}
+                          />
+                        )}
+                        {!isDraft && blockedDependencies.length > 0 && (
                           <span className={WORKITEM_ACTION_BLOCKED_CLASS}>
                             Blocked by {blockedDependencies.map((dependency, index) => (
                               <span key={dependency.id}>
@@ -170,9 +193,10 @@ export default async function WorkitemsPage(props: PageProps<"/workitems">) {
   const requestedProjectId = Array.isArray(searchParams.project) ? searchParams.project[0] : searchParams.project;
   const requestedStatus = Array.isArray(searchParams.status) ? searchParams.status[0] : searchParams.status;
   const requestedAll = Array.isArray(searchParams.all) ? searchParams.all[0] : searchParams.all;
+  const requestedKind = Array.isArray(searchParams.kind) ? searchParams.kind[0] : searchParams.kind;
   const parsedPage = requestedPage ? Number.parseInt(requestedPage, 10) : Number.NaN;
   const page = Number.isInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1;
-  const selectedStatus = workitemFilterStatus(requestedStatus, requestedAll);
+  const selectedStatus = workitemFilterStatus(requestedStatus, requestedAll, requestedKind);
 
   let projects: { id: string; name: string; color?: string }[] = [];
   let projectNames = new Map<string, { name: string; color?: string }>();
@@ -200,11 +224,12 @@ export default async function WorkitemsPage(props: PageProps<"/workitems">) {
       page,
       pageSize: WORKITEMS_PAGE_SIZE,
       projectId: selectedProjectId || undefined,
-      statuses: selectedStatus === "all"
+      statuses: selectedStatus === "all" || selectedStatus === "draft"
         ? undefined
         : selectedStatus === "active"
           ? ACTIVE_WORKITEM_STATUSES
           : [selectedStatus],
+      kind: selectedStatus === "draft" ? "draft" : undefined,
     });
     hasAnyWorkitems = (await listAllWorkitems({ page: 1, pageSize: 1 })).total > 0;
 
@@ -258,7 +283,9 @@ export default async function WorkitemsPage(props: PageProps<"/workitems">) {
     ? "No workitems"
     : selectedStatus === "active"
       ? "No active workitems"
-      : `No ${WORKITEM_STATUS_LABELS[selectedStatus].toLowerCase()} workitems`;
+      : selectedStatus === "draft"
+        ? "No drafts"
+        : `No ${WORKITEM_STATUS_LABELS[selectedStatus].toLowerCase()} workitems`;
 
   return (
     <main className="min-h-screen bg-[#f4f6fa] px-4 py-6 text-slate-900 sm:px-6 sm:py-10">

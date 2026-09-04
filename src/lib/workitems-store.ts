@@ -4,16 +4,19 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 
 import {
+  DEFAULT_WORKITEM_KIND,
   DEFAULT_WORKITEM_STATUS,
+  isWorkitemKind,
   isWorkitemStatus,
   WORKITEM_STATUSES as WORKITEM_STATUS_VALUES,
+  type WorkitemKind,
   type WorkitemStatus,
 } from "./workitem-filters";
 import { ensureDataMigrated } from "./data-migration";
 import { appendLifecycleEvent } from "./lifecycle-log-store";
 import { publishWorkitemChange } from "./workitem-events";
 
-export type { WorkitemStatus } from "./workitem-filters";
+export type { WorkitemKind, WorkitemStatus } from "./workitem-filters";
 export const WORKITEM_STATUSES = WORKITEM_STATUS_VALUES;
 
 export type Workitem = {
@@ -22,14 +25,16 @@ export type Workitem = {
   title: string;
   detail: string;
   status: WorkitemStatus;
+  kind: WorkitemKind;
   completedAt: string | null;
   dependencyIds: number[];
   createdAt: string;
   updatedAt: string;
 };
 
-type StoredWorkitem = Omit<Workitem, "status" | "completedAt" | "dependencyIds"> & {
+type StoredWorkitem = Omit<Workitem, "status" | "kind" | "completedAt" | "dependencyIds"> & {
   status?: WorkitemStatus | "plan_creating" | "plan_created";
+  kind?: WorkitemKind;
   completedAt?: string | null;
   dependencyIds?: number[];
 };
@@ -76,6 +81,7 @@ function isWorkitem(value: unknown): value is StoredWorkitem {
     typeof workitem.createdAt === "string" &&
     typeof workitem.updatedAt === "string" &&
     (workitem.status === undefined || isWorkitemStatus(workitem.status) || workitem.status === "plan_creating" || workitem.status === "plan_created") &&
+    (workitem.kind === undefined || isWorkitemKind(workitem.kind)) &&
     (workitem.completedAt === undefined || workitem.completedAt === null || typeof workitem.completedAt === "string") &&
     (workitem.dependencyIds === undefined || (
       Array.isArray(workitem.dependencyIds) &&
@@ -92,6 +98,7 @@ function normalizeWorkitem(workitem: StoredWorkitem): Workitem {
       : workitem.status === "plan_created"
         ? "task_created"
         : workitem.status ?? DEFAULT_WORKITEM_STATUS,
+    kind: workitem.kind ?? DEFAULT_WORKITEM_KIND,
     completedAt: workitem.completedAt ?? null,
     dependencyIds: workitem.dependencyIds ?? [],
   };
@@ -166,7 +173,7 @@ function workitemDetails(input: unknown): { title: string; detail: string } {
   return { title: title.trim(), detail };
 }
 
-type WorkitemPatch = Partial<Pick<Workitem, "title" | "detail" | "status" | "dependencyIds">>;
+type WorkitemPatch = Partial<Pick<Workitem, "title" | "detail" | "status" | "kind" | "dependencyIds">>;
 
 function dependencyIds(value: unknown): number[] {
   if (!Array.isArray(value) || !value.every((dependencyId) => Number.isInteger(dependencyId) && dependencyId > 0)) {
@@ -189,8 +196,12 @@ function validateDependencies(
     if (dependencyId === workitemId) {
       throw new WorkitemValidationError(`Workitem #${workitemId} cannot depend on itself.`);
     }
-    if (!workitemsById.has(dependencyId)) {
+    const dependency = workitemsById.get(dependencyId);
+    if (!dependency) {
       throw new WorkitemValidationError(`Workitem dependency #${dependencyId} must be an existing workitem in this project.`);
+    }
+    if ((dependency.kind ?? DEFAULT_WORKITEM_KIND) === "draft") {
+      throw new WorkitemValidationError(`Workitem dependency #${dependencyId} is a draft; convert it to a workitem first.`);
     }
   }
 
@@ -239,6 +250,12 @@ function workitemPatch(input: unknown): WorkitemPatch {
     }
     patch.status = values.status;
   }
+  if (Object.hasOwn(values, "kind")) {
+    if (!isWorkitemKind(values.kind)) {
+      throw new WorkitemValidationError("Select a valid workitem kind.");
+    }
+    patch.kind = values.kind;
+  }
   if (Object.hasOwn(values, "dependencyIds")) {
     patch.dependencyIds = dependencyIds(values.dependencyIds);
   }
@@ -260,13 +277,18 @@ function normalizePageSize(pageSize: number): number {
 
 function paginateWorkitems(
   workitems: Workitem[],
-  { page, pageSize, projectId, statuses }: PaginationInput & { projectId?: string; statuses?: readonly WorkitemStatus[] },
+  { page, pageSize, projectId, statuses, kind }: PaginationInput & {
+    projectId?: string;
+    statuses?: readonly WorkitemStatus[];
+    kind?: WorkitemKind;
+  },
 ): PaginatedWorkitems {
   const normalizedPage = normalizePage(page);
   const normalizedPageSize = normalizePageSize(pageSize);
   const filteredWorkitems = workitems
     .filter((workitem) => projectId === undefined || workitem.projectId === projectId)
     .filter((workitem) => statuses === undefined || statuses.includes(workitem.status))
+    .filter((workitem) => kind === undefined || workitem.kind === kind)
     .sort((first, second) => second.createdAt.localeCompare(first.createdAt));
   const total = filteredWorkitems.length;
 
@@ -281,17 +303,21 @@ function paginateWorkitems(
 
 export async function listProjectWorkitems(
   projectId: string,
-  { page, pageSize, statuses }: PaginationInput & { statuses?: readonly WorkitemStatus[] },
+  { page, pageSize, statuses, kind }: PaginationInput & { statuses?: readonly WorkitemStatus[]; kind?: WorkitemKind },
 ): Promise<PaginatedWorkitems> {
   const { workitems } = await readDocument();
-  return paginateWorkitems(workitems.map(normalizeWorkitem), { page, pageSize, projectId, statuses });
+  return paginateWorkitems(workitems.map(normalizeWorkitem), { page, pageSize, projectId, statuses, kind });
 }
 
 export async function listAllWorkitems(
-  { page, pageSize, projectId, statuses }: PaginationInput & { projectId?: string; statuses?: readonly WorkitemStatus[] },
+  { page, pageSize, projectId, statuses, kind }: PaginationInput & {
+    projectId?: string;
+    statuses?: readonly WorkitemStatus[];
+    kind?: WorkitemKind;
+  },
 ): Promise<PaginatedWorkitems> {
   const { workitems } = await readDocument();
-  return paginateWorkitems(workitems.map(normalizeWorkitem), { page, pageSize, projectId, statuses });
+  return paginateWorkitems(workitems.map(normalizeWorkitem), { page, pageSize, projectId, statuses, kind });
 }
 
 export async function listWorkitemsByStatuses(statuses: readonly WorkitemStatus[]): Promise<Workitem[]> {
@@ -325,6 +351,7 @@ export async function searchProjectWorkitems(
   return workitems
     .map(normalizeWorkitem)
     .filter((workitem) => workitem.projectId === projectId)
+    .filter((workitem) => workitem.kind !== "draft")
     .filter((workitem) => !excludedStatuses.includes(workitem.status))
     .filter((workitem) => !normalizedQuery || (
       workitem.title.toLowerCase().includes(normalizedQuery) ||
@@ -342,9 +369,16 @@ export async function getWorkitem(projectId: string, workitemId: number): Promis
 
 export async function createWorkitem(projectId: string, input: unknown): Promise<Workitem> {
   const details = workitemDetails(input);
-  const requestedDependencyIds = input && typeof input === "object" && Object.hasOwn(input, "dependencyIds")
-    ? dependencyIds((input as Record<string, unknown>).dependencyIds)
+  const values = input && typeof input === "object"
+    ? (input as Record<string, unknown>)
+    : {};
+  const requestedDependencyIds = Object.hasOwn(values, "dependencyIds")
+    ? dependencyIds(values.dependencyIds)
     : [];
+  const kind = Object.hasOwn(values, "kind") ? values.kind : DEFAULT_WORKITEM_KIND;
+  if (!isWorkitemKind(kind)) {
+    throw new WorkitemValidationError("Select a valid workitem kind.");
+  }
 
   return serializeWrite(async () => {
     const document = await readDocument();
@@ -359,6 +393,7 @@ export async function createWorkitem(projectId: string, input: unknown): Promise
       title: details.title,
       detail: details.detail,
       status: "open",
+      kind,
       completedAt: null,
       dependencyIds: requestedDependencyIds,
       createdAt: now,
@@ -398,6 +433,12 @@ export async function updateWorkitem(projectId: string, workitemId: number, inpu
     if (patch.dependencyIds !== undefined) {
       validateDependencies(document.workitems, projectId, workitemId, patch.dependencyIds);
       workitem.dependencyIds = patch.dependencyIds;
+    }
+    if (patch.kind === "draft" && (patch.status ?? workitem.status ?? DEFAULT_WORKITEM_STATUS) !== "open") {
+      throw new WorkitemValidationError("Only an open workitem can be turned back into a draft.");
+    }
+    if (patch.kind !== undefined) {
+      workitem.kind = patch.kind;
     }
     const previousStatus = workitem.status ?? DEFAULT_WORKITEM_STATUS;
     const statusChanged = patch.status !== undefined && patch.status !== previousStatus;

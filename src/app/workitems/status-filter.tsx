@@ -34,6 +34,7 @@ export function StatusFilter({ projectId, selectedStatus }: StatusFilterProps) {
       >
         <option value="active">Active</option>
         <option value="all">All</option>
+        <option value="draft">Draft</option>
         {WORKITEM_STATUSES.map((status) => (
           <option key={status} value={status}>{WORKITEM_STATUS_LABELS[status]}</option>
         ))}

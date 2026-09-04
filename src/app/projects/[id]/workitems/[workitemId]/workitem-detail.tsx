@@ -11,14 +11,18 @@ import {
   WORKITEM_ACTION_LINK_CLASS,
 } from "../../../../workitems/action-button-styles";
 import { DeleteWorkitemTasksButton } from "../../../../workitems/delete-workitem-tasks-button";
+import { PromoteWorkitemButton } from "../../../../workitems/promote-workitem-button";
 import { WorkitemDependencyPicker } from "../../../../workitems/workitem-dependency-picker";
 import { WorkitemDependencySummary } from "../../../../workitems/workitem-dependency-summary";
 import {
   WORKITEM_STATUSES,
   WORKITEM_STATUS_LABELS,
+  workitemKindBadgeClass,
+  workitemKindLabel,
   workitemStatusBadgeClass,
   workitemStatusLabel,
   type WorkitemDependency,
+  type WorkitemKind,
   type WorkitemStatus,
 } from "@/lib/workitem-filters";
 import { planConsoleHref } from "@/lib/plan-prompt";
@@ -30,6 +34,7 @@ type Workitem = {
   title: string;
   detail: string;
   status: WorkitemStatus;
+  kind: WorkitemKind;
   completedAt: string | null;
   dependencyIds: number[];
   createdAt: string;
@@ -68,12 +73,14 @@ export default function WorkitemDetail({
   const [error, setError] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
   const [workitemStatus, setWorkitemStatus] = useState(workitem.status);
+  const [workitemKind, setWorkitemKind] = useState(workitem.kind);
   const [completedAt, setCompletedAt] = useState(workitem.completedAt);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isStatusUpdating, setIsStatusUpdating] = useState(false);
   const [isDeleteConfirming, setIsDeleteConfirming] = useState(false);
   const [workitemTaskCount, setWorkitemTaskCount] = useState(taskCount);
-  const canCreateTask = workitemTaskCount === 0
+  const canCreateTask = workitemKind !== "draft"
+    && workitemTaskCount === 0
     && workitemStatus !== "task_creating"
     && workitemStatus !== "task_created"
     && blockingDependencies.length === 0;
@@ -192,6 +199,11 @@ export default function WorkitemDetail({
               <ProjectChip projectId={workitem.projectId} name={projectName} color={projectColor} /> workitems
             </Link>
             <span className="text-sm text-slate-500">Workitem #{workitem.id}</span>
+            {workitemKind === "draft" && (
+              <span className={`rounded-md px-2 py-0.5 text-xs font-medium ${workitemKindBadgeClass(workitemKind)}`}>
+                {workitemKindLabel(workitemKind)}
+              </span>
+            )}
             <span className={`rounded-md px-2 py-0.5 text-xs font-medium ${workitemStatusBadgeClass(workitemStatus)}`}>
               {workitemStatusLabel(workitemStatus)}
             </span>
@@ -204,24 +216,34 @@ export default function WorkitemDetail({
             </p>
           )}
           <div className="mt-4 flex flex-wrap items-end gap-3">
-            <div className="w-full sm:max-w-xs">
-              <label className="block text-sm font-medium text-slate-800" htmlFor="workitem-status">
-                Status
-              </label>
-              <select
-                id="workitem-status"
-                value={workitemStatus}
-                onChange={(event) => changeWorkitemStatus(event.target.value as WorkitemStatus)}
-                disabled={isStatusUpdating || isSubmitting}
-                className="mt-2 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-sky-600 focus:ring-3 focus:ring-sky-100 disabled:cursor-not-allowed disabled:bg-slate-100"
-              >
-                {WORKITEM_STATUSES.map((status) => (
-                  <option key={status} value={status}>{WORKITEM_STATUS_LABELS[status]}</option>
-                ))}
-              </select>
-              {isStatusUpdating && <p role="status" className="mt-2 text-sm text-slate-600">Updating status…</p>}
-            </div>
-            {canCreateTask && (hasApplications ? (
+            {workitemKind !== "draft" && (
+              <div className="w-full sm:max-w-xs">
+                <label className="block text-sm font-medium text-slate-800" htmlFor="workitem-status">
+                  Status
+                </label>
+                <select
+                  id="workitem-status"
+                  value={workitemStatus}
+                  onChange={(event) => changeWorkitemStatus(event.target.value as WorkitemStatus)}
+                  disabled={isStatusUpdating || isSubmitting}
+                  className="mt-2 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-sky-600 focus:ring-3 focus:ring-sky-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+                >
+                  {WORKITEM_STATUSES.map((status) => (
+                    <option key={status} value={status}>{WORKITEM_STATUS_LABELS[status]}</option>
+                  ))}
+                </select>
+                {isStatusUpdating && <p role="status" className="mt-2 text-sm text-slate-600">Updating status…</p>}
+              </div>
+            )}
+            {workitemKind === "draft" ? (
+              <PromoteWorkitemButton
+                projectId={workitem.projectId}
+                workitemId={workitem.id}
+                canCreateTask={blockingDependencies.length === 0}
+                hasApplications={hasApplications}
+                onPromoted={() => setWorkitemKind("workitem")}
+              />
+            ) : canCreateTask && (hasApplications ? (
               <Link href={planConsoleHref(workitem.projectId, workitem.id)} className={WORKITEM_ACTION_LINK_CLASS}>
                 Create task
               </Link>
@@ -230,28 +252,32 @@ export default function WorkitemDetail({
                 Add an application on the <Link href={`/projects/${workitem.projectId}`} className="underline">project page</Link> to create tasks
               </span>
             ))}
-            {workitemStatus === "task_created" && executableTaskId != null && (
+            {workitemKind !== "draft" && workitemStatus === "task_created" && executableTaskId != null && (
               <Link href={taskConsoleHref(executableTaskId)} className={WORKITEM_ACTION_LINK_CLASS}>
                 Execute task
               </Link>
             )}
-            <DeleteWorkitemTasksButton
-              projectId={workitem.projectId}
-              workitemId={workitem.id}
-              taskCount={workitemTaskCount}
-              onDeleted={(status) => {
-                setWorkitemTaskCount(0);
-                if (status) {
-                  setWorkitemStatus(status);
-                }
-              }}
-            />
+            {workitemKind !== "draft" && (
+              <DeleteWorkitemTasksButton
+                projectId={workitem.projectId}
+                workitemId={workitem.id}
+                taskCount={workitemTaskCount}
+                onDeleted={(status) => {
+                  setWorkitemTaskCount(0);
+                  if (status) {
+                    setWorkitemStatus(status);
+                  }
+                }}
+              />
+            )}
           </div>
-          <WorkitemDependencySummary
-            projectId={workitem.projectId}
-            dependencies={initialDependencies}
-            blockingDependencies={blockingDependencies}
-          />
+          {workitemKind !== "draft" && (
+            <WorkitemDependencySummary
+              projectId={workitem.projectId}
+              dependencies={initialDependencies}
+              blockingDependencies={blockingDependencies}
+            />
+          )}
         </header>
 
         <form onSubmit={saveWorkitem} className="mt-8 space-y-6" noValidate>

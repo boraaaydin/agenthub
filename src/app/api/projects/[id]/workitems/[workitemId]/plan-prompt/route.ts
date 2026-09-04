@@ -72,6 +72,13 @@ export async function GET(
     return Response.json({ error: message }, { status: 500 });
   }
 
+  if (workitem.kind === "draft") {
+    return Response.json(
+      { error: "This workitem is a draft. Convert it to a workitem before creating a task." },
+      { status: 409 },
+    );
+  }
+
   if (blockedDependencies && blockedDependencies.length > 0) {
     const names = blockedDependencies.map((dependency) => `#${dependency.id} · ${dependency.title}`).join(", ");
     return Response.json(

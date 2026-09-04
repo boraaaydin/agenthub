@@ -6,7 +6,11 @@ import { type FormEvent, useState } from "react";
 
 import { BrandBar } from "../../brand-bar";
 import { WorkitemDependencyPicker } from "../workitem-dependency-picker";
-import { workitemsHref, type WorkitemDependency, type WorkitemFilterStatus } from "@/lib/workitem-filters";
+import {
+  workitemsHref,
+  type WorkitemDependency,
+  type WorkitemFilterStatus,
+} from "@/lib/workitem-filters";
 
 type Project = {
   id: string;
@@ -34,7 +38,7 @@ export function NewWorkitemForm({ projects, initialProjectId, initialStatus, err
   const [isSubmitting, setIsSubmitting] = useState(false);
   const workitemListPath = workitemsHref({ projectId, status: initialStatus });
 
-  async function createWorkitem(event: FormEvent<HTMLFormElement>) {
+  async function submitWorkitem(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
 
@@ -56,6 +60,7 @@ export function NewWorkitemForm({ projects, initialProjectId, initialStatus, err
           title,
           detail,
           dependencyIds: dependencies.map((dependency) => dependency.id),
+          kind: "draft",
         }),
       });
       const body = (await response.json()) as ApiError;
@@ -87,7 +92,7 @@ export function NewWorkitemForm({ projects, initialProjectId, initialStatus, err
             </Link>
           </div>
           <h1 className="mt-4 text-3xl font-semibold tracking-[-0.03em]">New workitem</h1>
-          <p className="mt-1 text-sm leading-6 text-slate-600">Add work to a project&apos;s workitem list.</p>
+          <p className="mt-1 text-sm leading-6 text-slate-600">New workitems are saved as drafts; convert them to workitems when they are ready to be planned.</p>
         </header>
 
         {loadError ? (
@@ -108,7 +113,7 @@ export function NewWorkitemForm({ projects, initialProjectId, initialStatus, err
             </Link>
           </section>
         ) : (
-          <form onSubmit={createWorkitem} className="mt-8 space-y-6" noValidate>
+          <form onSubmit={submitWorkitem} className="mt-8 space-y-6" noValidate>
             <div>
               <label className="block text-sm font-medium text-slate-800" htmlFor="workitem-project">Project</label>
               <select
@@ -170,7 +175,7 @@ export function NewWorkitemForm({ projects, initialProjectId, initialStatus, err
                 disabled={isSubmitting}
                 className="h-11 rounded-xl bg-sky-700 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-800 focus:outline-none focus:ring-3 focus:ring-sky-200 disabled:cursor-not-allowed disabled:bg-slate-300"
               >
-                {isSubmitting ? "Creating workitem…" : "Create workitem"}
+                {isSubmitting ? "Saving draft…" : "Save as draft"}
               </button>
               <Link
                 href={workitemListPath}

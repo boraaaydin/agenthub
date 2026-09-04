@@ -9,6 +9,7 @@ export default async function NewWorkitemPage(props: PageProps<"/workitems/new">
   const requestedProjectId = Array.isArray(searchParams.project) ? searchParams.project[0] : searchParams.project;
   const requestedStatus = Array.isArray(searchParams.status) ? searchParams.status[0] : searchParams.status;
   const requestedAll = Array.isArray(searchParams.all) ? searchParams.all[0] : searchParams.all;
+  const requestedKind = Array.isArray(searchParams.kind) ? searchParams.kind[0] : searchParams.kind;
   let projects: { id: string; name: string }[] = [];
   let error = "";
 
@@ -31,7 +32,7 @@ export default async function NewWorkitemPage(props: PageProps<"/workitems/new">
   return <NewWorkitemForm
     projects={projects}
     initialProjectId={selectedProjectId}
-    initialStatus={workitemFilterStatus(requestedStatus, requestedAll)}
+    initialStatus={workitemFilterStatus(requestedStatus, requestedAll, requestedKind)}
     error={error}
   />;
 }
