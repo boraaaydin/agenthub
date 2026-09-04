@@ -1,4 +1,5 @@
 import { isAgentId, type AgentId } from "./agents";
+import { isRemoteAccessActionId, type RemoteAccessActionId } from "./remote-access";
 import type { WorkitemStatus } from "./workitem-filters";
 
 export type SessionState = "starting" | "running" | "exited";
@@ -9,14 +10,25 @@ export type SessionContext = {
   taskId?: number;
 };
 
-export type SessionSummary = {
+type SessionBase = {
   id: string;
-  agent: AgentId;
   cwd: string;
   state: SessionState;
   createdAt: string;
+};
+
+export type AgentSessionSummary = SessionBase & {
+  kind: "agent";
+  agent: AgentId;
   execution?: SessionContext;
 };
+
+export type SetupSessionSummary = SessionBase & {
+  kind: "setup";
+  action: RemoteAccessActionId;
+};
+
+export type SessionSummary = AgentSessionSummary | SetupSessionSummary;
 
 export type ClientMessage =
   | {
@@ -29,6 +41,7 @@ export type ClientMessage =
       initialPrompt?: string;
       execution?: SessionContext;
     }
+  | { type: "start-setup"; action: RemoteAccessActionId; cols: number; rows: number }
   | { type: "attach"; sessionId: string; cols: number; rows: number }
   | { type: "input"; sessionId: string; data: string }
   | { type: "resize"; sessionId: string; cols: number; rows: number }
@@ -93,6 +106,12 @@ export function isClientMessage(value: unknown): value is ClientMessage {
             message.initialPrompt.trim().length > 0 &&
             message.initialPrompt.length <= 100_000)) &&
         (message.execution === undefined || isSessionContext(message.execution))
+      );
+    case "start-setup":
+      return (
+        isRemoteAccessActionId(message.action) &&
+        isDimension(message.cols, 500) &&
+        isDimension(message.rows, 500)
       );
     case "attach":
       return (

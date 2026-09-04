@@ -7,6 +7,7 @@ import type { Terminal } from "@xterm/xterm";
 
 import { BrandBar } from "../brand-bar";
 import { AGENTS, DEFAULT_AGENT_ID, getAgent, type AgentId } from "@/lib/agents";
+import { getRemoteAccessAction, type RemoteAccessActionId } from "@/lib/remote-access";
 import type { ClientMessage, SessionContext, SessionSummary } from "@/lib/agent-protocol";
 import { terminalSubmission } from "@/lib/terminal-input";
 import { TaskClosePrompt } from "./task-close-prompt";
@@ -19,6 +20,7 @@ import { usePlanCreation } from "./use-plan-creation";
 import { useTaskExecution } from "./use-task-execution";
 import { usePlanRun } from "./use-plan-run";
 import { useTaskRun } from "./use-task-run";
+import { useSetupRun } from "./use-setup-run";
 
 type ConsoleProject = {
   id: string;
@@ -59,6 +61,7 @@ export function AgentConsole() {
   const initialPlanProjectIdRef = useRef(searchParams.get("planProjectId"));
   const initialPlanWorkitemIdRef = useRef(searchParams.get("planWorkitemId"));
   const initialRunTaskIdRef = useRef(searchParams.get("runTaskId"));
+  const initialSetupActionRef = useRef(searchParams.get("setup"));
   const sendRef = useRef<(message: ClientMessage) => boolean>(sendPlaceholder);
   const {
     beginExecution,
@@ -222,7 +225,12 @@ export function AgentConsole() {
   const activeSession = sessions.find((session) => session.id === selectedSessionId) ?? null;
   const isNewSessionMode = newSession || !activeSession;
 
-  const activeAgent = activeSession ? getAgent(activeSession.agent) : null;
+  const activeAgent = activeSession?.kind === "agent" ? getAgent(activeSession.agent) : null;
+  const activeSessionLabel = activeSession
+    ? activeSession.kind === "agent"
+      ? activeAgent!.label
+      : getRemoteAccessAction(activeSession.action).label
+    : null;
   const activeProject = activeSession ? projects.find((project) => project.path === activeSession.cwd) : null;
   const selectedProject = projects.find((project) => project.id === selectedProjectId) ?? null;
   const selectedAgent = getAgent(agent);
@@ -235,6 +243,27 @@ export function AgentConsole() {
       focusPromptOnRevealRef.current = false;
     }
   }, [isPromptVisible]);
+
+  const startSetup = useCallback((action: RemoteAccessActionId) => {
+    activeSessionRef.current = null;
+    attachedSessionRef.current = null;
+    terminalRef.current?.clear();
+    setError("");
+    setNewSession(true);
+    setSelectedSessionId(null);
+    setIsPromptVisible(false);
+    if (!send({
+      type: "start-setup",
+      action,
+      cols: terminalRef.current?.cols ?? 80,
+      rows: terminalRef.current?.rows ?? 24,
+    })) {
+      return false;
+    }
+    setIsCreating(true);
+    setPrompt("");
+    return true;
+  }, [send]);
 
   const startSession = useCallback((
     nextAgent: AgentId,
@@ -309,7 +338,7 @@ export function AgentConsole() {
   }
 
   const completeActiveTask = useCallback(() => {
-    const context = activeSession?.execution;
+    const context = activeSession?.kind === "agent" ? activeSession.execution : undefined;
     if (!activeSession || !context?.taskId) return;
     setError("");
     void completeTaskAndWorkitem({ taskId: context.taskId, projectId: context.projectId, workitemId: context.workitemId, sessionId: activeSession.id, isRunning: activeSession.state === "running" }, closeCompletedSession);
@@ -358,6 +387,14 @@ export function AgentConsole() {
     setSelectedProjectId,
     setError,
     startSession,
+  });
+
+  useSetupRun({
+    setupActionRef: initialSetupActionRef,
+    connected,
+    terminalReady,
+    setError,
+    startSetup,
   });
 
   useTaskRun({
@@ -446,10 +483,10 @@ export function AgentConsole() {
                 {selectedProject && <p className="text-sm text-slate-600">{selectedAgent.label} will start in {selectedProject.name}.</p>}
               </section>
             ) : (
-              <section className="flex flex-wrap items-center justify-between gap-3" aria-label={`${activeAgent?.label} session controls`}>
+              <section className="flex flex-wrap items-center justify-between gap-3" aria-label={`${activeSessionLabel} session controls`}>
                 <div className="min-w-0">
-                  <h2 className="text-lg font-semibold text-slate-900">{activeProject?.name ?? activeAgent?.label}</h2>
-                  <SessionInfo session={activeSession} />
+                  <h2 className="text-lg font-semibold text-slate-900">{activeProject?.name ?? activeSessionLabel}</h2>
+                  {activeSession.kind === "agent" && <SessionInfo session={activeSession} />}
                 </div>
                 {activeSession.state === "running" && (
                   <button type="button" onClick={stopSession} className="h-10 rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-800 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-3 focus:ring-sky-100">
@@ -475,7 +512,7 @@ export function AgentConsole() {
             <div className="space-y-3">
               <div className="overflow-hidden rounded-[14px] border border-slate-800 bg-[#0b1220] shadow-[0_16px_36px_rgba(15,23,42,0.16)]">
                 <div className="flex items-center justify-between border-b border-slate-700 px-4 py-2.5 text-xs text-slate-300">
-                  <span>{activeAgent ? `${activeAgent.label} terminal` : "Agent terminal"}</span>
+                  <span>{activeSessionLabel ? `${activeSessionLabel} terminal` : "Agent terminal"}</span>
                   <span>{activeSession?.state ?? "Ready for a new session"}</span>
                 </div>
                 <SessionTerminal
@@ -487,27 +524,30 @@ export function AgentConsole() {
                 />
               </div>
 
-              <div className="flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  aria-expanded={isPromptVisible}
-                  aria-controls="prompt-form"
-                  onClick={togglePromptVisibility}
-                  className="h-10 rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-800 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-3 focus:ring-sky-100"
-                >
-                  {isPromptVisible ? "Hide prompt" : "Show prompt"}
-                </button>
-                {activeSession?.execution?.taskId && (
-                  <TaskCompletionAction
-                    isCompleting={isCompleting}
-                    isSessionRunning={activeSession.state !== "exited"}
-                    onComplete={completeActiveTask}
-                  />
-                )}
-              </div>
+              {activeSession?.kind !== "setup" && (
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    aria-expanded={isPromptVisible}
+                    aria-controls="prompt-form"
+                    onClick={togglePromptVisibility}
+                    className="h-10 rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-800 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-3 focus:ring-sky-100"
+                  >
+                    {isPromptVisible ? "Hide prompt" : "Show prompt"}
+                  </button>
+                  {activeSession?.kind === "agent" && activeSession.execution?.taskId && (
+                    <TaskCompletionAction
+                      isCompleting={isCompleting}
+                      isSessionRunning={activeSession.state !== "exited"}
+                      onComplete={completeActiveTask}
+                    />
+                  )}
+                </div>
+              )}
 
-              <div id="prompt-form">
-                {isPromptVisible && (
+              {activeSession?.kind !== "setup" && (
+                <div id="prompt-form">
+                  {isPromptVisible && (
                   <form onSubmit={submitPrompt} className="flex flex-col gap-3">
                     <label className="text-sm font-medium text-slate-800" htmlFor="prompt">Prompt</label>
                     <textarea
@@ -537,8 +577,9 @@ export function AgentConsole() {
                       </button>
                     </div>
                   </form>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>

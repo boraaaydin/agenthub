@@ -31,9 +31,10 @@ const unsubscribeFromWorkitemChanges = subscribeToWorkitemChanges((change) => {
 const sessions = new SessionRegistry({
   onOutput: (session, data) => broadcast({ type: "output", sessionId: session.id, data }),
   onExit: (session, code) => {
-    if (session.execution?.taskId) {
-      void markExitedExecutionTaskExecuted(session.execution.taskId).catch((error) => {
-        console.error(`Unable to mark execution task #${session.execution?.taskId} as executed after session exit`, error);
+    if (session.kind === "agent" && session.execution?.taskId) {
+      const taskId = session.execution.taskId;
+      void markExitedExecutionTaskExecuted(taskId).catch((error) => {
+        console.error(`Unable to mark execution task #${taskId} as executed after session exit`, error);
       });
     }
     broadcast({ type: "exit", sessionId: session.id, code });
@@ -92,6 +93,16 @@ async function handleClientMessage(socket: WebSocket, message: ClientMessage) {
           message.initialPrompt,
           message.execution,
         );
+        send(socket, { type: "started", session: toSummary(session) });
+        broadcastSessions();
+      } catch (error) {
+        send(socket, { type: "error", message: errorMessage(error) });
+      }
+      return;
+    }
+    case "start-setup": {
+      try {
+        const session = await sessions.createSetup(message.action, message.cols, message.rows);
         send(socket, { type: "started", session: toSummary(session) });
         broadcastSessions();
       } catch (error) {
@@ -183,8 +194,8 @@ function sendUnknownSession(socket: WebSocket, sessionId: string) {
   });
 }
 
-function toSummary({ id, agent, cwd, state, createdAt, execution }: SessionSummary): SessionSummary {
-  return { id, agent, cwd, state, createdAt, ...(execution ? { execution } : {}) };
+function toSummary(session: SessionSummary): SessionSummary {
+  return { ...session };
 }
 
 function broadcastSessions() {

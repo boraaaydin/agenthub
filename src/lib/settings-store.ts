@@ -6,11 +6,21 @@ import {
   isAgentId,
   type AgentId,
 } from "./agents";
+import {
+  isRemoteAccessMethodId,
+  REMOTE_ACCESS_METHODS,
+  type RemoteAccessMethodId,
+} from "./remote-access";
 import type { SettingsPromptField } from "./settings-prompts";
+
+export type RemoteAccessSettings = {
+  methods: { id: RemoteAccessMethodId; enabled: boolean }[];
+};
 
 export type Settings = {
   taskAgent: AgentId;
   planAgent: AgentId;
+  remoteAccess: RemoteAccessSettings;
 } & Record<SettingsPromptField, string>;
 
 type SettingsUpdate = Partial<Settings>;
@@ -38,6 +48,9 @@ export function defaultSettings(): Settings {
     planPostPrompt: "",
     taskPrompt: "",
     taskPostPrompt: "",
+    remoteAccess: {
+      methods: REMOTE_ACCESS_METHODS.map((method) => ({ id: method.id, enabled: false })),
+    },
   };
 }
 
@@ -56,6 +69,10 @@ function parseDocument(value: unknown): Settings {
   }
 
   const settings = { ...defaultSettings(), taskAgent, planAgent };
+  if ("remoteAccess" in document) {
+    settings.remoteAccess = parseRemoteAccess(document.remoteAccess);
+  }
+
   for (const field of PROMPT_FIELDS) {
     if (field in document) {
       if (typeof document[field] !== "string") {
@@ -102,7 +119,75 @@ function settingsDetails(input: unknown): SettingsUpdate {
     }
   }
 
+  if ("remoteAccess" in document) {
+    update.remoteAccess = validateRemoteAccess(document.remoteAccess);
+  }
+
   return update;
+}
+
+function parseRemoteAccess(value: unknown): RemoteAccessSettings {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new SettingsStoreError(`Settings data in ${SETTINGS_FILE_PATH} has an invalid format.`);
+  }
+
+  const remoteAccess = value as Record<string, unknown>;
+  if (!("methods" in remoteAccess)) {
+    return defaultSettings().remoteAccess;
+  }
+  if (!Array.isArray(remoteAccess.methods)) {
+    throw new SettingsStoreError(`Settings data in ${SETTINGS_FILE_PATH} has an invalid format.`);
+  }
+
+  const enabledById = new Map<RemoteAccessMethodId, boolean>();
+  for (const method of remoteAccess.methods) {
+    if (!method || typeof method !== "object" || Array.isArray(method)) {
+      throw new SettingsStoreError(`Settings data in ${SETTINGS_FILE_PATH} has an invalid format.`);
+    }
+    const entry = method as Record<string, unknown>;
+    if (isRemoteAccessMethodId(entry.id) && typeof entry.enabled === "boolean") {
+      enabledById.set(entry.id, entry.enabled);
+    }
+  }
+
+  return {
+    methods: REMOTE_ACCESS_METHODS.map((method) => ({
+      id: method.id,
+      enabled: enabledById.get(method.id) ?? false,
+    })),
+  };
+}
+
+function validateRemoteAccess(value: unknown): RemoteAccessSettings {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new SettingsValidationError("Remote access settings must be an object.");
+  }
+
+  const remoteAccess = value as Record<string, unknown>;
+  if (!Array.isArray(remoteAccess.methods)) {
+    throw new SettingsValidationError("Remote access methods must be an array.");
+  }
+
+  const ids = new Set<RemoteAccessMethodId>();
+  const methods = remoteAccess.methods.map((method) => {
+    if (!method || typeof method !== "object" || Array.isArray(method)) {
+      throw new SettingsValidationError("Each remote access method must include an id and enabled flag.");
+    }
+    const entry = method as Record<string, unknown>;
+    if (!isRemoteAccessMethodId(entry.id)) {
+      throw new SettingsValidationError("Select a valid remote access method.");
+    }
+    if (ids.has(entry.id)) {
+      throw new SettingsValidationError("Remote access methods cannot be listed more than once.");
+    }
+    if (typeof entry.enabled !== "boolean") {
+      throw new SettingsValidationError("Remote access method enabled values must be true or false.");
+    }
+    ids.add(entry.id);
+    return { id: entry.id, enabled: entry.enabled };
+  });
+
+  return { methods };
 }
 
 async function readDocument(): Promise<Settings> {

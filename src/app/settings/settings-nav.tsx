@@ -7,6 +7,7 @@ import { SETTINGS_PROMPTS } from "@/lib/settings-prompts";
 
 const destinations = [
   { href: "/settings", label: "Agents" },
+  { href: "/settings/remote-access", label: "Remote access" },
   ...SETTINGS_PROMPTS.map((prompt) => ({
     href: `/settings/prompts/${prompt.slug}`,
     label: prompt.navLabel,

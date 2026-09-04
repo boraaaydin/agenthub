@@ -1,5 +1,54 @@
 "use client";
+
 import { useEffect, useRef, useState } from "react";
-import type { SessionSummary } from "@/lib/agent-protocol";
-type Props = { session: Pick<SessionSummary, "id" | "cwd" | "execution"> };
-export function SessionInfo({ session }: Props) { const [title, setTitle] = useState<string | null>(null); const cache = useRef(new Map<string, string | null>()); const context = session.execution; useEffect(() => { if (!context) return; const endpoint = context.taskId ? `/api/tasks/${context.taskId}` : `/api/projects/${context.projectId}/workitems/${context.workitemId}`; const cached = cache.current.get(session.id); if (cached !== undefined) { setTitle(cached); return; } const controller = new AbortController(); void fetch(endpoint, { signal: controller.signal }).then(async (response) => { const body = await response.json() as { title?: string }; const next = response.ok && typeof body.title === "string" ? body.title : null; cache.current.set(session.id, next); setTitle(next); }).catch(() => undefined); return () => controller.abort(); }, [context, session.id]); if (!context) return null; const label = context.taskId ? `Task ${context.taskId} (Workitem ${context.workitemId})` : `Workitem ${context.workitemId}`; return <div className="mt-1 flex min-w-0 items-center gap-2"><p className="min-w-0 truncate text-sm text-slate-600">{title ? `${label} - ${title}` : label}</p><span title={session.cwd} className="text-xs text-slate-500">ⓘ</span></div>; }
+
+import type { AgentSessionSummary } from "@/lib/agent-protocol";
+
+type Props = { session: Pick<AgentSessionSummary, "id" | "cwd" | "execution"> };
+
+export function SessionInfo({ session }: Props) {
+  const [title, setTitle] = useState<string | null>(null);
+  const cache = useRef(new Map<string, string | null>());
+  const context = session.execution;
+
+  useEffect(() => {
+    if (!context) {
+      return;
+    }
+
+    const endpoint = context.taskId
+      ? `/api/tasks/${context.taskId}`
+      : `/api/projects/${context.projectId}/workitems/${context.workitemId}`;
+    const cached = cache.current.get(session.id);
+    if (cached !== undefined) {
+      setTitle(cached);
+      return;
+    }
+
+    const controller = new AbortController();
+    void fetch(endpoint, { signal: controller.signal })
+      .then(async (response) => {
+        const body = await response.json() as { title?: string };
+        const next = response.ok && typeof body.title === "string" ? body.title : null;
+        cache.current.set(session.id, next);
+        setTitle(next);
+      })
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, [context, session.id]);
+
+  if (!context) {
+    return null;
+  }
+
+  const label = context.taskId
+    ? `Task ${context.taskId} (Workitem ${context.workitemId})`
+    : `Workitem ${context.workitemId}`;
+
+  return (
+    <div className="mt-1 flex min-w-0 items-center gap-2">
+      <p className="min-w-0 truncate text-sm text-slate-600">{title ? `${label} - ${title}` : label}</p>
+      <span title={session.cwd} className="text-xs text-slate-500">ⓘ</span>
+    </div>
+  );
+}

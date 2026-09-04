@@ -65,7 +65,7 @@ execution sessions; it is retained with each in-memory session summary so the co
 contextual controls after a reload. Composed task-execution prompts instruct the agent to report
 completion through `PATCH /api/tasks/{id}`, while the custom server marks an execution session's
 task `executed` when that session exits. Global Task and Plan agent defaults plus the four global task-flow prompts are
-persisted in git-ignored `data/settings.json`. When a prompt has no saved value, settings displays
+persisted in git-ignored `data/settings.json`, alongside an extensible `remoteAccess.methods` list of enabled remote-access methods. When a prompt has no saved value, settings displays
 the matching built-in prompt from `src/lib/default-prompts/` in muted text; these defaults are read
 by the server-only `src/lib/default-settings-prompts.ts` module. Built-in and saved prompts may use
 `{{PROJECT_NAME}}` and `{{PROJECT_SLUG}}`, which are resolved for the session's project during prompt
@@ -83,7 +83,7 @@ The persisted work model uses **Workitems** for units of work and **Tasks** for 
 
 - Session persistence across a server restart (in-memory only vs. on disk).
 - Console sessions run in the directory of a selected saved project.
-- Auth: none (localhost-only) vs. a shared token.
+- Remote access ships with no authentication: the private tailnet is the boundary, while AgentHub continues to listen on every network interface.
 
 ## Tech Stack
 
@@ -127,13 +127,15 @@ src/app/                         # Next.js application
 ├── console/                      # Multi-session console route and colocated client components
 │   ├── use-plan-execution.ts     # Tracks plan execution and task/plan close-out
 │   ├── use-plan-run.ts           # Starts a plan session from task URL parameters
+│   ├── use-setup-run.ts          # Starts an allowlisted remote-access setup session from a URL parameter
 │   └── use-task-run.ts           # Starts a task-execution session from a plan URL parameter
 ├── projects/                     # Projects list, creation, and detail routes
 │   ├── page.tsx                  # Projects list page
 │   ├── project-color-picker.tsx  # Shared project color picker and chip preview
 │   └── [id]/                     # Editable project detail and task-detail routes
 │       └── tasks/                # Detail routes; list and creation redirect to /tasks
-├── settings/                     # Global agent defaults and task-flow prompt settings
+├── settings/                     # Global agent defaults, remote access, and task-flow prompt settings
+│   └── remote-access/            # Tailscale status and remote-access controls
 ├── tasks/                        # Global task list, project filter, and unified task creation
 ├── plans/                        # Global plan list, creation, and detail routes
 │   ├── [planId]/                 # Editable plan detail and read-only file preview
@@ -147,12 +149,16 @@ src/lib/
 ├── default-prompts/              # Built-in task-flow prompt Markdown files
 ├── default-settings-prompts.ts   # Server-only built-in prompt reader
 ├── prompt-tokens.ts              # Client-safe project prompt token resolution
+├── remote-access.ts              # Client-safe remote-access method and setup-action catalogs
+├── tailscale.ts                  # Server-only Tailscale CLI discovery and status probe
 ├── plans-store.ts                # Persisted editable plan records
 ├── plan-file.ts                  # Server-only safe plan file reader/deleter
 ├── project-colors.ts             # Client-safe palette tokens and deterministic project colors
 └── settings-store.ts             # Persisted global settings store
 server/
 ├── agents.ts                     # Server-only CLI command definitions
+├── setup-commands.ts             # Allowlisted remote-access setup command definitions
+├── tailscale-cli.ts              # Shared server-side Tailscale CLI resolver
 └── session-registry.ts           # In-memory concurrent PTY session registry
 data/                             # Runtime JSON database (git-ignored: projects.json, tasks.json, plans.json, lifecycle-log.json, settings.json)
 .agent/
@@ -185,7 +191,8 @@ tasks in `.agent/tasks/` are archived by hand into
 
 - Agent selection (Codex, Claude Code, or Pi) is available per new console session. The prompt form appears below the terminal card and is hidden by default when a session is selected; it opens by default when starting a new session. Contextual sessions show their task or plan title beneath the project name, and the project path is available through an accessible session-information control.
 - Multiple concurrent sessions can run, be selected from the console sidebar, and retain their
-  individual in-memory scrollback until dismissed after exit.
+  individual in-memory scrollback until dismissed after exit. Allowlisted remote-access setup sessions run in the same PTY terminal, accept interactive input such as `sudo`, and remain available with their output after exit.
+- Settings includes a **Remote access** screen with an extensible method catalog. Its Tailscale method detects installation and tailnet connection status, shows tailnet URLs when connected, and starts visible install or connect setup sessions when needed. AgentHub adds no authentication for tailnet access.
 - Every project has a persisted task list with server-side URL pagination; project deletion can
   explicitly remove its tasks or leave them in place.
 - Tasks can start a new console session for planning; the session uses the configured Plan agent

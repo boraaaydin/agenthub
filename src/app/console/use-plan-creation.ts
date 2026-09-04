@@ -50,6 +50,10 @@ export function usePlanCreation({ setError }: UsePlanCreationOptions) {
   }, []);
 
   const trackPlanningSession = useCallback((session: SessionSummary) => {
+    if (session.kind !== "agent") {
+      return;
+    }
+
     const context = session.execution;
     if (!context || context.taskId || planningSessionsRef.current.has(session.id)) {
       return;

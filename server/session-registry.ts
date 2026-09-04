@@ -1,14 +1,19 @@
-import { stat } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
+import { stat } from "node:fs/promises";
+import os from "node:os";
 import { resolve } from "node:path";
 import { spawn, type IPty } from "node-pty";
 
 import type { AgentId } from "../src/lib/agents";
+import type { RemoteAccessActionId } from "../src/lib/remote-access";
 import type { SessionContext, SessionSummary } from "../src/lib/agent-protocol";
 import { getAgentCommand } from "./agents";
+import { getSetupCommand } from "./setup-commands";
 
 const MAX_BUFFER_SIZE = 200 * 1024;
 const MAX_SESSIONS = 12;
+
+type CommandDefinition = { command: string; args: string[] };
 
 export type TerminalSession = SessionSummary & {
   pty: IPty;
@@ -33,14 +38,24 @@ export class SessionRegistry {
 
   list(): SessionSummary[] {
     return [...this.sessions.values()]
-      .map(({ id, agent, cwd, state, createdAt, execution }) => ({
-        id,
-        agent,
-        cwd,
-        state,
-        createdAt,
-        ...(execution ? { execution } : {}),
-      }))
+      .map((session) => session.kind === "agent"
+        ? {
+            id: session.id,
+            kind: "agent" as const,
+            agent: session.agent,
+            cwd: session.cwd,
+            state: session.state,
+            createdAt: session.createdAt,
+            ...(session.execution ? { execution: session.execution } : {}),
+          }
+        : {
+            id: session.id,
+            kind: "setup" as const,
+            action: session.action,
+            cwd: session.cwd,
+            state: session.state,
+            createdAt: session.createdAt,
+          })
       .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
   }
 
@@ -53,58 +68,22 @@ export class SessionRegistry {
     initialPrompt?: string,
     execution?: SessionContext,
   ) {
-    if (this.sessions.size >= MAX_SESSIONS) {
-      throw new Error(`You can keep up to ${MAX_SESSIONS} sessions. Dismiss an exited session before starting another.`);
-    }
-
     const cwd = await validateDirectory(cwdInput);
-    if (this.sessions.size >= MAX_SESSIONS) {
-      throw new Error(`You can keep up to ${MAX_SESSIONS} sessions. Dismiss an exited session before starting another.`);
-    }
-
-    const definition = getAgentCommand(agent, initialPrompt);
-    const pty = spawn(definition.command, definition.args, {
-      name: "xterm-color",
+    return this.createSession(
+      getAgentCommand(agent, initialPrompt),
+      { kind: "agent", agent, cwd, autoClose, execution },
       cols,
       rows,
-      cwd,
-      env: {
-        ...process.env,
-        TERM: "xterm-256color",
-        COLORTERM: "truecolor",
-      },
-    });
-    const session: TerminalSession = {
-      id: randomUUID(),
-      agent,
-      cwd,
-      state: "running",
-      createdAt: new Date().toISOString(),
-      pty,
-      buffer: "",
-      autoClose,
-      stoppedByUser: false,
-      ...(execution ? { execution } : {}),
-    };
+    );
+  }
 
-    pty.onData((data) => {
-      session.buffer = keepRecentOutput(session.buffer, data);
-      this.options.onOutput(session, data);
-    });
-    pty.onExit(({ exitCode }) => {
-      if (this.sessions.get(session.id) !== session) {
-        return;
-      }
-
-      session.state = "exited";
-      if (session.autoClose && !session.stoppedByUser) {
-        this.sessions.delete(session.id);
-      }
-      this.options.onExit(session, exitCode);
-    });
-
-    this.sessions.set(session.id, session);
-    return session;
+  async createSetup(action: RemoteAccessActionId, cols: number, rows: number) {
+    return this.createSession(
+      await getSetupCommand(action),
+      { kind: "setup", action, cwd: os.homedir(), autoClose: false },
+      cols,
+      rows,
+    );
   }
 
   stop(id: string) {
@@ -136,6 +115,66 @@ export class SessionRegistry {
       }
     }
     this.sessions.clear();
+  }
+
+  private createSession(
+    definition: CommandDefinition,
+    details: { kind: "agent"; agent: AgentId; cwd: string; autoClose: boolean; execution?: SessionContext }
+      | { kind: "setup"; action: RemoteAccessActionId; cwd: string; autoClose: boolean },
+    cols: number,
+    rows: number,
+  ) {
+    if (this.sessions.size >= MAX_SESSIONS) {
+      throw new Error(`You can keep up to ${MAX_SESSIONS} sessions. Dismiss an exited session before starting another.`);
+    }
+
+    const pty = spawn(definition.command, definition.args, {
+      name: "xterm-color",
+      cols,
+      rows,
+      cwd: details.cwd,
+      env: {
+        ...process.env,
+        TERM: "xterm-256color",
+        COLORTERM: "truecolor",
+      },
+    });
+    const session: TerminalSession = {
+      id: randomUUID(),
+      cwd: details.cwd,
+      state: "running",
+      createdAt: new Date().toISOString(),
+      pty,
+      buffer: "",
+      autoClose: details.autoClose,
+      stoppedByUser: false,
+      ...(details.kind === "agent"
+        ? {
+            kind: "agent",
+            agent: details.agent,
+            ...(details.execution ? { execution: details.execution } : {}),
+          }
+        : { kind: "setup", action: details.action }),
+    };
+
+    pty.onData((data) => {
+      session.buffer = keepRecentOutput(session.buffer, data);
+      this.options.onOutput(session, data);
+    });
+    pty.onExit(({ exitCode }) => {
+      if (this.sessions.get(session.id) !== session) {
+        return;
+      }
+
+      session.state = "exited";
+      if (session.autoClose && !session.stoppedByUser) {
+        this.sessions.delete(session.id);
+      }
+      this.options.onExit(session, exitCode);
+    });
+
+    this.sessions.set(session.id, session);
+    return session;
   }
 }
 
