@@ -457,6 +457,7 @@ export function AgentConsole() {
     projects,
     setAgent,
     setSelectedProjectId,
+    setSelectedApplicationId,
     setError,
     startSession,
     beginExecution,
@@ -517,7 +518,7 @@ export function AgentConsole() {
                     {activeProject?.name ?? activeSessionLabel}
                     {activeApplication && <span className="font-normal text-slate-600"> · {activeApplication.name}</span>}
                   </h2>
-                  {activeSession.kind === "agent" && <SessionInfo session={activeSession} />}
+                  {activeSession.kind === "agent" && <SessionInfo session={activeSession} projects={projects} />}
                 </div>
                 {activeSession.state === "running" && (
                   <button type="button" onClick={stopSession} className="h-10 rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-800 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-3 focus:ring-sky-100">

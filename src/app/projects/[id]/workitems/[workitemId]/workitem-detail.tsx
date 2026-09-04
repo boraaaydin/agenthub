@@ -6,7 +6,10 @@ import { type FormEvent, useState } from "react";
 
 import { BrandBar } from "../../../../brand-bar";
 import { ProjectChip } from "../../../../project-chip";
-import { WORKITEM_ACTION_LINK_CLASS } from "../../../../workitems/action-button-styles";
+import {
+  WORKITEM_ACTION_BLOCKED_CLASS,
+  WORKITEM_ACTION_LINK_CLASS,
+} from "../../../../workitems/action-button-styles";
 import { DeleteWorkitemTasksButton } from "../../../../workitems/delete-workitem-tasks-button";
 import {
   WORKITEM_STATUSES,
@@ -37,9 +40,17 @@ type WorkitemDetailProps = {
   workitem: Workitem;
   executableTaskId?: number | null;
   taskCount?: number;
+  hasApplications: boolean;
 };
 
-export default function WorkitemDetail({ projectName, projectColor, workitem, executableTaskId, taskCount = 0 }: WorkitemDetailProps) {
+export default function WorkitemDetail({
+  projectName,
+  projectColor,
+  workitem,
+  executableTaskId,
+  taskCount = 0,
+  hasApplications,
+}: WorkitemDetailProps) {
   const router = useRouter();
   const workitemListPath = `/workitems?project=${encodeURIComponent(workitem.projectId)}`;
   const workitemApiPath = `/api/projects/${workitem.projectId}/workitems/${workitem.id}`;
@@ -193,11 +204,15 @@ export default function WorkitemDetail({ projectName, projectColor, workitem, ex
               </select>
               {isStatusUpdating && <p role="status" className="mt-2 text-sm text-slate-600">Updating status…</p>}
             </div>
-            {canCreateTask && (
+            {canCreateTask && (hasApplications ? (
               <Link href={planConsoleHref(workitem.projectId, workitem.id)} className={WORKITEM_ACTION_LINK_CLASS}>
                 Create task
               </Link>
-            )}
+            ) : (
+              <span className={WORKITEM_ACTION_BLOCKED_CLASS} aria-disabled="true">
+                Add an application on the <Link href={`/projects/${workitem.projectId}`} className="underline">project page</Link> to create tasks
+              </span>
+            ))}
             {workitemStatus === "task_created" && executableTaskId != null && (
               <Link href={taskConsoleHref(executableTaskId)} className={WORKITEM_ACTION_LINK_CLASS}>
                 Execute task

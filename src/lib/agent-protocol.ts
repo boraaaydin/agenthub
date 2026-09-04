@@ -12,6 +12,7 @@ export type SessionContext = {
   projectId: string;
   workitemId: number;
   taskId?: number;
+  applicationId?: string;
 };
 
 type SessionBase = {
@@ -83,6 +84,10 @@ export function isSessionContext(value: unknown): value is SessionContext {
       (typeof context.taskId === "number" &&
         Number.isInteger(context.taskId) &&
         context.taskId > 0)) &&
+    (context.applicationId === undefined ||
+      (typeof context.applicationId === "string" &&
+        context.applicationId.trim().length > 0 &&
+        context.applicationId.length <= 200)) &&
     typeof context.projectId === "string" &&
     context.projectId.trim().length > 0 &&
     context.projectId.length <= 200 &&

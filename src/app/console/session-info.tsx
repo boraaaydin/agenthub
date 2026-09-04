@@ -3,10 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 
 import type { AgentSessionSummary } from "@/lib/agent-protocol";
+import { resolveSessionProject, type SessionProject } from "./session-project";
 
-type Props = { session: Pick<AgentSessionSummary, "id" | "cwd" | "execution"> };
+type Props = {
+  session: Pick<AgentSessionSummary, "id" | "cwd" | "execution">;
+  projects: SessionProject[];
+};
 
-export function SessionInfo({ session }: Props) {
+export function SessionInfo({ session, projects }: Props) {
   const [title, setTitle] = useState<string | null>(null);
   const cache = useRef(new Map<string, string | null>());
   const context = session.execution;
@@ -41,8 +45,14 @@ export function SessionInfo({ session }: Props) {
     return null;
   }
 
+  const { application: cwdApplication } = resolveSessionProject(session.cwd, projects);
+  const application = context.applicationId
+    ? projects.flatMap((project) => project.applications).find(
+      (candidate) => candidate.id === context.applicationId,
+    ) ?? cwdApplication
+    : cwdApplication;
   const label = context.taskId
-    ? `Task ${context.taskId} (Workitem ${context.workitemId})`
+    ? `Task ${context.taskId} (Workitem ${context.workitemId})${application ? ` · ${application.name}` : ""}`
     : `Workitem ${context.workitemId}`;
 
   return (

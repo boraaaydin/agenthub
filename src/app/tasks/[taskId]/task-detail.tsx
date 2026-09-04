@@ -5,7 +5,12 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { BrandBar } from "../../brand-bar";
-import { ProjectChip, UnknownProjectChip } from "../../project-chip";
+import {
+  ApplicationChip,
+  ProjectChip,
+  UnknownApplicationChip,
+  UnknownProjectChip,
+} from "../../project-chip";
 import { DeleteTaskSection } from "./delete-task-section";
 import { TaskFilePreview } from "./task-file-preview";
 import {
@@ -36,6 +41,7 @@ type TaskDetailProps = {
   project: Project | null;
   filePreview: React.ComponentProps<typeof TaskFilePreview>["result"];
   projectPath: string | null;
+  application: { id: string; name: string; path: string } | null;
 };
 
 function formatDate(value: string): string {
@@ -50,6 +56,7 @@ export default function TaskDetail({
   project,
   filePreview,
   projectPath,
+  application,
 }: TaskDetailProps) {
   const router = useRouter();
   const [currentTask, setCurrentTask] = useState(task);
@@ -175,6 +182,11 @@ export default function TaskDetail({
             ) : (
               <UnknownProjectChip />
             )}
+            {application ? (
+              <ApplicationChip name={application.name} />
+            ) : (
+              <UnknownApplicationChip />
+            )}
             {project ? (
               <Link
                 href={`/projects/${currentTask.projectId}/workitems/${currentTask.workitemId}`}
@@ -238,6 +250,18 @@ export default function TaskDetail({
             )}
           </div>
         )}
+
+        <section className="mt-8 rounded-xl border border-slate-200 bg-white p-5 shadow-sm" aria-labelledby="task-application">
+          <h2 id="task-application" className="text-sm font-medium text-slate-800">Application</h2>
+          {application ? (
+            <>
+              <p className="mt-3 text-sm font-medium text-slate-900">{application.name}</p>
+              <p className="mt-1 break-all font-mono text-xs leading-5 text-slate-600">{application.path}</p>
+            </>
+          ) : (
+            <p className="mt-3 text-sm leading-6 text-slate-500">This task&apos;s application is no longer available.</p>
+          )}
+        </section>
 
         <section
           className="mt-8 rounded-xl border border-slate-200 bg-white p-5 shadow-sm"

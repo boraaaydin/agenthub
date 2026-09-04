@@ -4,6 +4,9 @@ const WORKITEM_ACTION_BASE_CLASS =
 export const WORKITEM_ACTION_LINK_CLASS =
   `${WORKITEM_ACTION_BASE_CLASS} border-sky-200 text-sky-800 hover:border-sky-300 hover:bg-sky-50 focus:ring-sky-100`;
 
+export const WORKITEM_ACTION_BLOCKED_CLASS =
+  `${WORKITEM_ACTION_BASE_CLASS} border-slate-200 bg-slate-100 text-slate-400`;
+
 export const WORKITEM_ACTION_NEUTRAL_CLASS =
   `${WORKITEM_ACTION_BASE_CLASS} border-slate-300 text-slate-800 hover:border-slate-400 hover:bg-slate-50 focus:ring-sky-100`;
 

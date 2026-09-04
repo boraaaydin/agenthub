@@ -1,5 +1,11 @@
 import { applyPromptTokens, projectSlug, type ProjectPromptTokens } from "@/lib/prompt-tokens";
 
+type PlanApplication = {
+  id: string;
+  name: string;
+  path: string;
+};
+
 type ComposePlanPromptOptions = ProjectPromptTokens & {
   planPrompt: string;
   planPostPrompt: string;
@@ -7,6 +13,7 @@ type ComposePlanPromptOptions = ProjectPromptTokens & {
   workitemId: number;
   taskTitle: string;
   taskDetail: string;
+  applications: PlanApplication[];
   tasksEndpoint?: string;
 };
 
@@ -20,18 +27,29 @@ function planLanguageSection(project: ProjectPromptTokens): string {
   ].join("\n\n");
 }
 
-function registerPlanPrompt({ projectId, workitemId, tasksEndpoint }: Pick<ComposePlanPromptOptions, "projectId" | "workitemId" | "tasksEndpoint">): string {
+function applicationsSection(applications: PlanApplication[]): string {
+  return [
+    "## Applications",
+    applications.map((application) => `- ${application.name} — id: ${application.id} — directory: ${application.path}`).join("\n"),
+    "Write one task file per application, each scoped to that application's codebase.",
+    "Register one task per application with POST /api/tasks, including that application's applicationId.",
+    "Keep every registered filePath relative to the project directory, not to the application directory.",
+  ].join("\n\n");
+}
+
+function registerPlanPrompt({ projectId, workitemId, applications, tasksEndpoint }: Pick<ComposePlanPromptOptions, "projectId" | "workitemId" | "applications" | "tasksEndpoint">): string {
   if (!tasksEndpoint) {
     return "";
   }
 
+  const exampleApplicationId = applications[0]?.id ?? "APPLICATION_ID";
   return [
     "## Register the plan in AgentHub",
-    `POST ${tasksEndpoint} with Content-Type: application/json.`,
-    "After the task file is final and before ending the CLI process or following the exit step above, register it with:",
-    `curl -X POST "${tasksEndpoint}" -H "Content-Type: application/json" -d '{"projectId":"${projectId}","workitemId":${workitemId},"title":"PLAN_TITLE","filePath":".agent/tasks/PLAN_FILE.md","summary":"One or two sentence summary."}'`,
-    "Replace PLAN_TITLE, filePath, and summary with the finished plan's title, repository-relative task-file path, and one or two sentence summary.",
-    "If the response is not 201, report that failure in your final summary, then still finish and exit; do not retry in a loop.",
+    `POST ${tasksEndpoint} with Content-Type: application/json once per application.`,
+    "After each task file is final and before ending the CLI process or following the exit step above, register it with:",
+    `curl -X POST "${tasksEndpoint}" -H "Content-Type: application/json" -d '{"projectId":"${projectId}","workitemId":${workitemId},"applicationId":"${exampleApplicationId}","title":"PLAN_TITLE","filePath":".agent/tasks/PLAN_FILE.md","summary":"One or two sentence summary."}'`,
+    "Replace applicationId, PLAN_TITLE, filePath, and summary with the matching application's ID, finished plan title, project-relative task-file path, and one or two sentence summary. Repeat this call once per application.",
+    "If a response is not 201, report that failure in your final summary, then still finish and exit; do not retry in a loop.",
   ].join("\n\n");
 }
 
@@ -45,6 +63,7 @@ export function composePlanPrompt(options: ComposePlanPromptOptions): string {
     applyPromptTokens(options.planPrompt.trim(), project),
     `## Workitem #${options.workitemId}: ${options.taskTitle.trim()}\n\n${options.taskDetail.trim() || "No detail provided."}`,
     planLanguageSection(project),
+    applicationsSection(options.applications),
     applyPromptTokens(options.planPostPrompt.trim(), project),
   ];
   const registration = registerPlanPrompt(options);

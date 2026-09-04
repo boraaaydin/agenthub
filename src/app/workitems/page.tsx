@@ -7,7 +7,11 @@ import { StatusFilter } from "./status-filter";
 import { WorkitemLiveUpdates } from "./workitem-live-updates";
 import { WorkitemStatusButton } from "./workitem-status-button";
 import { DeleteWorkitemTasksButton } from "./delete-workitem-tasks-button";
-import { WORKITEM_ACTION_LINK_CLASS } from "./action-button-styles";
+import {
+  WORKITEM_ACTION_BLOCKED_CLASS,
+  WORKITEM_ACTION_LINK_CLASS,
+} from "./action-button-styles";
+import { listApplications, ApplicationStoreError } from "@/lib/applications-store";
 import { listProjects, ProjectStoreError } from "@/lib/projects-store";
 import {
   listAllWorkitems,
@@ -37,10 +41,12 @@ function WorkitemRows({
   projectNames,
   workitems,
   tasksByWorkitem,
+  applicationCounts,
 }: {
   projectNames: Map<string, { name: string; color?: string }>;
   workitems: Workitem[];
   tasksByWorkitem: LatestTasksByWorkitem;
+  applicationCounts: Map<string, number>;
 }) {
   return (
     <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -64,6 +70,7 @@ function WorkitemRows({
                 && workitem.status !== "task_creating"
                 && workitem.status !== "task_created";
               const titleClass = `break-words font-medium ${workitem.status === "completed" ? "text-slate-500" : "text-slate-900"}`;
+              const hasApplications = (applicationCounts.get(workitem.projectId) ?? 0) > 0;
 
               return (
                 <tr key={workitem.id} className="transition-colors hover:bg-slate-50">
@@ -102,11 +109,15 @@ function WorkitemRows({
                             Execute task
                           </Link>
                         )}
-                        {canCreateTask && (
+                        {canCreateTask && (hasApplications ? (
                           <Link href={planConsoleHref(workitem.projectId, workitem.id)} className={WORKITEM_ACTION_LINK_CLASS}>
                             Create task
                           </Link>
-                        )}
+                        ) : (
+                          <span className={WORKITEM_ACTION_BLOCKED_CLASS} aria-disabled="true">
+                            Add an application in <Link href={`/projects/${workitem.projectId}`} className="underline">project settings</Link> to create tasks
+                          </span>
+                        ))}
                         <DeleteWorkitemTasksButton
                           projectId={workitem.projectId}
                           workitemId={workitem.id}
@@ -141,12 +152,20 @@ export default async function WorkitemsPage(props: PageProps<"/workitems">) {
   let hasAnyWorkitems = false;
   let selectedProjectId = "";
   let tasksByWorkitem: LatestTasksByWorkitem = new Map();
+  let applicationCounts = new Map<string, number>();
   let error = "";
 
   try {
-    const savedProjects = await listProjects();
+    const [savedProjects, applications] = await Promise.all([
+      listProjects(),
+      listApplications(),
+    ]);
     projects = savedProjects.map(({ id, name, color }) => ({ id, name, color }));
     projectNames = new Map(projects.map((project) => [project.id, { name: project.name, color: project.color }]));
+    applicationCounts = applications.reduce((counts, application) => {
+      counts.set(application.projectId, (counts.get(application.projectId) ?? 0) + 1);
+      return counts;
+    }, new Map<string, number>());
     selectedProjectId = projects.some((project) => project.id === requestedProjectId) ? requestedProjectId ?? "" : "";
     workitemPage = await listAllWorkitems({
       page,
@@ -163,9 +182,11 @@ export default async function WorkitemsPage(props: PageProps<"/workitems">) {
     console.error("Unable to render workitems", caughtError);
     error = caughtError instanceof ProjectStoreError
       ? "Project data could not be read. Check data/projects.json and reload this page."
-      : caughtError instanceof WorkitemStoreError
-        ? "Workitem data could not be read. Check data/workitems.json and reload this page."
-        : "Workitems could not be loaded. Reload this page and try again.";
+      : caughtError instanceof ApplicationStoreError
+        ? "Application data could not be read. Check data/applications.json and reload this page."
+        : caughtError instanceof WorkitemStoreError
+          ? "Workitem data could not be read. Check data/workitems.json and reload this page."
+          : "Workitems could not be loaded. Reload this page and try again.";
   }
 
   try {
@@ -243,7 +264,7 @@ export default async function WorkitemsPage(props: PageProps<"/workitems">) {
             ) : (
               <>
                 {workitemPage.workitems.length > 0 ? (
-                  <WorkitemRows projectNames={projectNames} workitems={workitemPage.workitems} tasksByWorkitem={tasksByWorkitem} />
+                  <WorkitemRows projectNames={projectNames} workitems={workitemPage.workitems} tasksByWorkitem={tasksByWorkitem} applicationCounts={applicationCounts} />
                 ) : (
                   <p className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
                     There are no workitems on this page.

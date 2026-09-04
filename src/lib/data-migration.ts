@@ -74,6 +74,57 @@ async function migrateTasks() {
   await fs.unlink(plansPath);
 }
 
+function usableApplicationId(value: unknown): boolean {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+async function removeApplicationlessTasks() {
+  const taskSource = await readJson(tasksPath);
+  if (!taskSource || typeof taskSource !== "object" || !Array.isArray((taskSource as { tasks?: unknown }).tasks)) {
+    return;
+  }
+
+  const tasks = (taskSource as { tasks: unknown[] }).tasks;
+  const remainingTasks = tasks.filter(
+    (task) => task && typeof task === "object" && usableApplicationId((task as { applicationId?: unknown }).applicationId),
+  );
+  if (remainingTasks.length === tasks.length) {
+    return;
+  }
+
+  await writeJson(tasksPath, { ...taskSource, tasks: remainingTasks });
+
+  const workitemSource = await readJson(workitemsPath);
+  if (!workitemSource || typeof workitemSource !== "object" || !Array.isArray((workitemSource as { workitems?: unknown }).workitems)) {
+    return;
+  }
+
+  const taskKeys = new Set(
+    remainingTasks.flatMap((task) => {
+      if (!task || typeof task !== "object") return [];
+      const record = task as { projectId?: unknown; workitemId?: unknown };
+      return typeof record.projectId === "string" && typeof record.workitemId === "number"
+        ? [`${record.projectId}:${record.workitemId}`]
+        : [];
+    }),
+  );
+  let workitemsChanged = false;
+  const workitems = (workitemSource as { workitems: unknown[] }).workitems.map((workitem) => {
+    if (!workitem || typeof workitem !== "object") return workitem;
+    const record = workitem as { projectId?: unknown; id?: unknown; status?: unknown };
+    const hasTasks = typeof record.projectId === "string" && typeof record.id === "number"
+      && taskKeys.has(`${record.projectId}:${record.id}`);
+    if (!hasTasks && (record.status === "task_creating" || record.status === "task_created")) {
+      workitemsChanged = true;
+      return { ...record, status: "open", completedAt: null, updatedAt: new Date().toISOString() };
+    }
+    return workitem;
+  });
+  if (workitemsChanged) {
+    await writeJson(workitemsPath, { ...workitemSource, workitems });
+  }
+}
+
 async function migrateLifecycleLog() {
   const source = await readJson(lifecyclePath);
   if (!source || typeof source !== "object" || "version" in source) return;
@@ -95,6 +146,7 @@ export function ensureDataMigrated(): Promise<void> {
   migrationPromise ??= (async () => {
     await migrateWorkitems();
     await migrateTasks();
+    await removeApplicationlessTasks();
     await migrateLifecycleLog();
   })();
   return migrationPromise;

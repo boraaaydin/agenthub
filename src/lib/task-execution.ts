@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import { applyPromptTokens, type ProjectPromptTokens } from "@/lib/prompt-tokens";
 
 type ComposeTaskPromptOptions = ProjectPromptTokens & {
@@ -8,15 +10,28 @@ type ComposeTaskPromptOptions = ProjectPromptTokens & {
   taskTitle: string;
   filePath: string;
   summary: string;
+  applicationName: string;
+  applicationPath: string;
   taskEndpoint?: string;
 };
 
-function taskFileSection({ taskId, workitemId, taskTitle, filePath, summary }: Omit<ComposeTaskPromptOptions, "taskPrompt" | "taskPostPrompt">) {
+function taskFileSection({
+  taskId,
+  workitemId,
+  taskTitle,
+  filePath,
+  summary,
+  projectPath,
+  applicationName,
+  applicationPath,
+}: Omit<ComposeTaskPromptOptions, "taskPrompt" | "taskPostPrompt">) {
   const details = [
     "## Task file",
     `Task #${taskId}: ${taskTitle.trim()}`,
     `Workitem #${workitemId}`,
-    `Repository-relative file path: ${filePath}`,
+    `## Application\n\n${applicationName} — working directory: ${applicationPath}`,
+    `Project-relative file path: ${filePath}`,
+    `Absolute task file path: ${path.join(projectPath, filePath)}`,
   ];
   if (summary.trim()) details.push(`Task summary: ${summary.trim()}`);
   return details.join("\n\n");
@@ -45,7 +60,7 @@ export function composeTaskPrompt(options: ComposeTaskPromptOptions) {
   };
   const sections = [
     applyPromptTokens(options.taskPrompt.trim(), project),
-    taskFileSection(options),
+    taskFileSection({ ...options, ...project }),
     applyPromptTokens(options.taskPostPrompt.trim(), project),
   ];
   const completion = reportExecutionPrompt(options);

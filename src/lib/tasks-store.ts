@@ -18,6 +18,7 @@ export const TASK_STATUSES = TASK_STATUS_VALUES;
 export type Task = {
   id: number;
   projectId: string;
+  applicationId: string;
   workitemId: number;
   title: string;
   filePath: string;
@@ -80,6 +81,8 @@ function isTask(value: unknown): value is StoredTask {
     task.id > 0 &&
     typeof task.projectId === "string" &&
     Boolean(task.projectId.trim()) &&
+    typeof task.applicationId === "string" &&
+    Boolean(task.applicationId.trim()) &&
     typeof task.workitemId === "number" &&
     Number.isInteger(task.workitemId) &&
     task.workitemId > 0 &&
@@ -168,9 +171,12 @@ function taskDetails(input: unknown): Omit<Task, "id" | "status" | "createdAt" |
     throw new TaskValidationError("Task details are required.");
   }
 
-  const { projectId, workitemId, title, filePath, summary } = input as Record<string, unknown>;
+  const { projectId, applicationId, workitemId, title, filePath, summary } = input as Record<string, unknown>;
   if (typeof projectId !== "string" || !projectId.trim()) {
     throw new TaskValidationError("Enter a project ID.");
+  }
+  if (typeof applicationId !== "string" || !applicationId.trim()) {
+    throw new TaskValidationError("Enter an application ID.");
   }
 
   const normalizedWorkitemId = typeof workitemId === "number"
@@ -193,6 +199,7 @@ function taskDetails(input: unknown): Omit<Task, "id" | "status" | "createdAt" |
 
   return {
     projectId: projectId.trim(),
+    applicationId: applicationId.trim(),
     workitemId: normalizedWorkitemId,
     title: title.trim(),
     filePath: filePath.trim(),
@@ -200,7 +207,7 @@ function taskDetails(input: unknown): Omit<Task, "id" | "status" | "createdAt" |
   };
 }
 
-export type TaskPatch = Partial<Pick<Task, "projectId" | "workitemId" | "title" | "filePath" | "summary" | "status">>;
+export type TaskPatch = Partial<Pick<Task, "projectId" | "applicationId" | "workitemId" | "title" | "filePath" | "summary" | "status">>;
 
 export function taskPatch(input: unknown): TaskPatch {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
@@ -215,6 +222,12 @@ export function taskPatch(input: unknown): TaskPatch {
       throw new TaskValidationError("Enter a project ID.");
     }
     patch.projectId = values.projectId.trim();
+  }
+  if (Object.hasOwn(values, "applicationId")) {
+    if (typeof values.applicationId !== "string" || !values.applicationId.trim()) {
+      throw new TaskValidationError("Enter an application ID.");
+    }
+    patch.applicationId = values.applicationId.trim();
   }
   if (Object.hasOwn(values, "workitemId")) {
     const workitemId = typeof values.workitemId === "number"

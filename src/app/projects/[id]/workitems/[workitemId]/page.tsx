@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { BrandBar } from "../../../../brand-bar";
+import { listProjectApplications, ApplicationStoreError } from "@/lib/applications-store";
 import WorkitemDetail from "./workitem-detail";
 import { getProject, ProjectStoreError } from "@/lib/projects-store";
 import { getWorkitem, WorkitemStoreError } from "@/lib/workitems-store";
@@ -19,20 +20,25 @@ export default async function WorkitemDetailPage(props: PageProps<"/projects/[id
   let workitem;
   let executableTaskId: number | null = null;
   let taskCount = 0;
+  let hasApplications = false;
   let error = "";
 
   try {
     project = await getProject(id);
     if (project) {
+      const applications = await listProjectApplications(id);
+      hasApplications = applications.length > 0;
       workitem = await getWorkitem(id, parsedWorkitemId);
     }
   } catch (caughtError) {
     console.error("Unable to render project workitem", caughtError);
     error = caughtError instanceof ProjectStoreError
       ? "Project data could not be read. Check data/projects.json and reload this page."
-      : caughtError instanceof WorkitemStoreError
-        ? "Workitem data could not be read. Check data/workitems.json and reload this page."
-        : "Workitem details could not be loaded. Reload this page and try again.";
+      : caughtError instanceof ApplicationStoreError
+        ? "Application data could not be read. Check data/applications.json and reload this page."
+        : caughtError instanceof WorkitemStoreError
+          ? "Workitem data could not be read. Check data/workitems.json and reload this page."
+          : "Workitem details could not be loaded. Reload this page and try again.";
   }
 
   if (project && workitem) {
@@ -70,6 +76,7 @@ export default async function WorkitemDetailPage(props: PageProps<"/projects/[id
       workitem={workitem}
       executableTaskId={executableTaskId}
       taskCount={taskCount}
+      hasApplications={hasApplications}
     />
   );
 }

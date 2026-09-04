@@ -1,9 +1,15 @@
 import Link from "next/link";
 
 import { BrandBar } from "../brand-bar";
-import { ProjectChip, UnknownProjectChip } from "../project-chip";
+import {
+  ApplicationChip,
+  ProjectChip,
+  UnknownApplicationChip,
+  UnknownProjectChip,
+} from "../project-chip";
 import { ProjectFilter } from "./project-filter";
 import { StatusFilter } from "./status-filter";
+import { listApplications, ApplicationStoreError } from "@/lib/applications-store";
 import { listProjects, ProjectStoreError } from "@/lib/projects-store";
 import {
   ACTIVE_TASK_STATUSES,
@@ -24,12 +30,21 @@ function taskDate(value: string): string {
   return new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(value));
 }
 
-function TaskRows({ tasks, projectNames }: { tasks: Task[]; projectNames: Map<string, { name: string; color?: string }> }) {
+function TaskRows({
+  tasks,
+  projectNames,
+  applicationNames,
+}: {
+  tasks: Task[];
+  projectNames: Map<string, { name: string; color?: string }>;
+  applicationNames: Map<string, { name: string }>;
+}) {
   return (
     <section aria-label="All tasks" className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       <ul className="divide-y divide-slate-200">
         {tasks.map((task) => {
           const project = projectNames.get(task.projectId);
+          const application = applicationNames.get(task.applicationId);
           return (
             <li key={task.id} className="px-4 py-4 sm:px-5">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-baseline sm:justify-between sm:gap-5">
@@ -37,6 +52,7 @@ function TaskRows({ tasks, projectNames }: { tasks: Task[]; projectNames: Map<st
                   {project ? (
                     <ProjectChip projectId={task.projectId} name={project.name} color={project.color} />
                   ) : <UnknownProjectChip />}
+                  {application ? <ApplicationChip name={application.name} /> : <UnknownApplicationChip />}
                   <span className="shrink-0 text-sm font-medium tabular-nums text-slate-500">#{task.id}</span>
                   <span className={`inline-block rounded-md px-2 py-0.5 text-xs font-medium ${taskStatusBadgeClass(task.status)}`}>
                     {taskStatusLabel(task.status)}
@@ -93,15 +109,20 @@ export default async function TasksPage(props: PageProps<"/tasks">) {
 
   let projects: { id: string; name: string; color?: string }[] = [];
   let projectNames = new Map<string, { name: string; color?: string }>();
+  let applicationNames = new Map<string, { name: string }>();
   let taskPage: Awaited<ReturnType<typeof listAllTasks>> | undefined;
   let hasAnyTasks = false;
   let selectedProjectId = "";
   let error = "";
 
   try {
-    const savedProjects = await listProjects();
+    const [savedProjects, applications] = await Promise.all([
+      listProjects(),
+      listApplications(),
+    ]);
     projects = savedProjects.map(({ id, name, color }) => ({ id, name, color }));
     projectNames = new Map(projects.map((project) => [project.id, { name: project.name, color: project.color }]));
+    applicationNames = new Map(applications.map((application) => [application.id, { name: application.name }]));
     selectedProjectId = projects.some((project) => project.id === requestedProjectId) ? requestedProjectId ?? "" : "";
     taskPage = await listAllTasks({
       page,
@@ -118,6 +139,8 @@ export default async function TasksPage(props: PageProps<"/tasks">) {
     console.error("Unable to render tasks", caughtError);
     error = caughtError instanceof ProjectStoreError
       ? "Project data could not be read. Check data/projects.json and reload this page."
+      : caughtError instanceof ApplicationStoreError
+        ? "Application data could not be read. Check data/applications.json and reload this page."
       : caughtError instanceof TaskStoreError
         ? "Task data could not be read. Check data/tasks.json and reload this page."
         : caughtError instanceof TaskStoreError
@@ -179,7 +202,7 @@ export default async function TasksPage(props: PageProps<"/tasks">) {
               </section>
             ) : (
               <>
-                {taskPage.tasks.length > 0 ? <TaskRows tasks={taskPage.tasks} projectNames={projectNames} /> : (
+                {taskPage.tasks.length > 0 ? <TaskRows tasks={taskPage.tasks} projectNames={projectNames} applicationNames={applicationNames} /> : (
                   <p className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">There are no tasks on this page.</p>
                 )}
                 <nav aria-label="Task pagination" className="flex flex-wrap items-center justify-between gap-3">

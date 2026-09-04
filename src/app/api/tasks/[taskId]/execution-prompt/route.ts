@@ -1,3 +1,7 @@
+import {
+  ApplicationStoreError,
+  getApplication,
+} from "@/lib/applications-store";
 import { readDefaultSettingsPrompt } from "@/lib/default-settings-prompts";
 import { resolveTaskFilePath } from "@/lib/task-file";
 import { getTask, TaskStoreError } from "@/lib/tasks-store";
@@ -39,6 +43,7 @@ export async function GET(
 
   let task;
   let project;
+  let application;
   let settings;
 
   try {
@@ -50,16 +55,31 @@ export async function GET(
     if (!project) {
       return taskNotFoundResponse();
     }
+    application = await getApplication(task.applicationId);
+    if (!application) {
+      return Response.json(
+        { error: "The task's application no longer exists. Add or select an application before executing this task." },
+        { status: 409 },
+      );
+    }
+    if (application.projectId !== project.id) {
+      return Response.json(
+        { error: "The task's application does not belong to its project. Select a matching application before executing this task." },
+        { status: 409 },
+      );
+    }
     settings = await readSettings();
   } catch (error) {
     const message = error instanceof TaskStoreError
       ? "Task data could not be read. Check data/tasks.json and try again."
       : error instanceof ProjectStoreError
         ? "Project data could not be read. Check data/projects.json and try again."
-        : error instanceof SettingsStoreError
-          ? "Settings could not be read. Check data/settings.json and try again."
-          : "Unable to prepare the task. Try again.";
-    console.error("Unable to prepare task task", error);
+        : error instanceof ApplicationStoreError
+          ? "Application data could not be read. Check data/applications.json and try again."
+          : error instanceof SettingsStoreError
+            ? "Settings could not be read. Check data/settings.json and try again."
+            : "Unable to prepare the task. Try again.";
+    console.error("Unable to prepare task", error);
     return Response.json({ error: message }, { status: 500 });
   }
 
@@ -86,6 +106,9 @@ export async function GET(
     projectName: project.name,
     projectPath: project.path,
     projectSlug: project.slug,
+    applicationId: application.id,
+    applicationName: application.name,
+    applicationPath: application.path,
     workitemId: task.workitemId,
     filePath: task.filePath,
     prompt: composeTaskPrompt({
@@ -99,6 +122,8 @@ export async function GET(
       taskTitle: task.title,
       filePath: task.filePath,
       summary: task.summary,
+      applicationName: application.name,
+      applicationPath: application.path,
       taskEndpoint: `${new URL(request.url).origin}/api/tasks/${task.id}`,
     }),
   });

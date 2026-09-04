@@ -7,12 +7,19 @@ import { isAgentId, type AgentId } from "@/lib/agents";
 import type { SessionContext } from "@/lib/agent-protocol";
 import type { SessionCompletion } from "@/lib/session-completion";
 
-type Project = { id: string; name: string; path: string };
+type Project = {
+  id: string;
+  name: string;
+  path: string;
+  applications: { id: string; name: string; path: string }[];
+};
 type Response = {
   agent: AgentId;
   taskId: number;
   projectId: string;
   projectPath: string;
+  applicationId: string;
+  applicationPath: string;
   workitemId: number;
   prompt: string;
 };
@@ -25,6 +32,7 @@ type Options = {
   projects: Project[];
   setAgent: (agent: AgentId) => void;
   setSelectedProjectId: (id: string) => void;
+  setSelectedApplicationId: (id: string) => void;
   setError: (message: string) => void;
   startSession: (
     agent: AgentId,
@@ -32,6 +40,7 @@ type Options = {
     prompt: string,
     completion?: SessionCompletion,
     context?: SessionContext,
+    cwd?: string,
   ) => boolean;
   beginExecution: (execution: Required<SessionContext>) => void;
 };
@@ -44,6 +53,7 @@ export function useTaskRun({
   projects,
   setAgent,
   setSelectedProjectId,
+  setSelectedApplicationId,
   setError,
   startSession,
   beginExecution,
@@ -88,25 +98,34 @@ export function useTaskRun({
             candidate.id === result.projectId &&
             candidate.path === result.projectPath,
         );
+        const application = project?.applications.find(
+          (candidate) =>
+            candidate.id === result.applicationId &&
+            candidate.path === result.applicationPath,
+        );
         const execution: Required<SessionContext> = {
           projectId: result.projectId,
           workitemId: result.workitemId,
           taskId: result.taskId,
+          applicationId: result.applicationId,
         };
         if (
           !project ||
+          !application ||
           !startSession(
             result.agent,
             project,
             result.prompt,
             undefined,
             execution,
+            application.path,
           )
         ) {
           throw new Error("The terminal connection is not ready.");
         }
 
         setSelectedProjectId(project.id);
+        setSelectedApplicationId(application.id);
         setAgent(result.agent);
         beginExecution(execution);
         router.replace("/console");
@@ -129,6 +148,7 @@ export function useTaskRun({
     setAgent,
     setError,
     setSelectedProjectId,
+    setSelectedApplicationId,
     startSession,
     taskIdRef,
     terminalReady,

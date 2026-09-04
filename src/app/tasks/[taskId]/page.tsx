@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 
 import { BrandBar } from "../../brand-bar";
 import TaskDetail from "./task-detail";
+import { getApplication, ApplicationStoreError } from "@/lib/applications-store";
 import { readTaskFile } from "@/lib/task-file";
 import { getProject, ProjectStoreError } from "@/lib/projects-store";
 import { getTask, TaskStoreError } from "@/lib/tasks-store";
@@ -23,6 +24,7 @@ export default async function TaskDetailPage(props: PageProps<"/tasks/[taskId]">
   let task: Awaited<ReturnType<typeof getTask>> = null;
   let project: { id: string; name: string; color?: string } | null = null;
   let projectPath: string | null = null;
+  let application: { id: string; name: string; path: string } | null = null;
   let filePreview: Parameters<typeof TaskDetail>[0]["filePreview"] = { status: "missing-project" };
   let error = "";
 
@@ -40,6 +42,7 @@ export default async function TaskDetailPage(props: PageProps<"/tasks/[taskId]">
         ...(savedProject.color ? { color: savedProject.color } : {}),
       };
       projectPath = savedProject.path;
+      application = await getApplication(task.applicationId);
       filePreview = await readTaskFile(savedProject.path, task.filePath);
     }
   } catch (caughtError) {
@@ -48,7 +51,9 @@ export default async function TaskDetailPage(props: PageProps<"/tasks/[taskId]">
       ? "Task data could not be read. Check data/tasks.json and reload this page."
       : caughtError instanceof ProjectStoreError
         ? "Project data could not be read. Check data/projects.json and reload this page."
-        : "Task details could not be loaded. Reload this page and try again.";
+        : caughtError instanceof ApplicationStoreError
+          ? "Application data could not be read. Check data/applications.json and reload this page."
+          : "Task details could not be loaded. Reload this page and try again.";
   }
 
   if (!error && !task) {
@@ -74,6 +79,7 @@ export default async function TaskDetailPage(props: PageProps<"/tasks/[taskId]">
       project={project}
       filePreview={filePreview}
       projectPath={projectPath}
+      application={application}
     />
   );
 }

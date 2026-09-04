@@ -1,3 +1,7 @@
+import {
+  ApplicationStoreError,
+  listProjectApplications,
+} from "@/lib/applications-store";
 import { readDefaultSettingsPrompt } from "@/lib/default-settings-prompts";
 import { getProject, ProjectStoreError } from "@/lib/projects-store";
 import { readSettings, SettingsStoreError } from "@/lib/settings-store";
@@ -35,13 +39,15 @@ export async function GET(
   let project;
   let workitem;
   let settings;
+  let applications;
 
   try {
     project = await getProject(id);
     if (project) {
       workitem = await getWorkitem(id, parsedWorkitemId);
+      applications = await listProjectApplications(id);
     }
-    if (!project || !workitem) {
+    if (!project || !workitem || !applications) {
       return Response.json({ error: "Workitem not found." }, { status: 404 });
     }
     settings = await readSettings();
@@ -50,11 +56,20 @@ export async function GET(
       ? "Project data could not be read. Check data/projects.json and try again."
       : error instanceof WorkitemStoreError
         ? "Workitem data could not be read. Check data/workitems.json and try again."
-        : error instanceof SettingsStoreError
-          ? "Settings could not be read. Check data/settings.json and try again."
-          : "Unable to prepare the plan. Try again.";
+        : error instanceof ApplicationStoreError
+          ? "Application data could not be read. Check data/applications.json and try again."
+          : error instanceof SettingsStoreError
+            ? "Settings could not be read. Check data/settings.json and try again."
+            : "Unable to prepare the plan. Try again.";
     console.error("Unable to prepare project workitem plan", error);
     return Response.json({ error: message }, { status: 500 });
+  }
+
+  if (applications.length === 0) {
+    return Response.json(
+      { error: "Add an application to this project before creating tasks." },
+      { status: 409 },
+    );
   }
 
   const planPrompt = await effectivePrompt(settings.planPrompt, "planPrompt");
@@ -73,6 +88,11 @@ export async function GET(
     projectPath: project.path,
     projectSlug: project.slug,
     workitemId: workitem.id,
+    applications: applications.map(({ id: applicationId, name, path }) => ({
+      id: applicationId,
+      name,
+      path,
+    })),
     prompt: composePlanPrompt({
       planPrompt,
       planPostPrompt,
@@ -83,6 +103,7 @@ export async function GET(
       workitemId: workitem.id,
       taskTitle: workitem.title,
       taskDetail: workitem.detail,
+      applications,
       tasksEndpoint: `${new URL(request.url).origin}/api/tasks`,
     }),
   });
