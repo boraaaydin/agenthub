@@ -5,8 +5,18 @@ import { resolve } from "node:path";
 import { spawn, type IPty } from "node-pty";
 
 import type { AgentId } from "../src/lib/agents";
-import type { RemoteAccessActionId } from "../src/lib/remote-access";
-import type { SessionContext, SessionSummary } from "../src/lib/agent-protocol";
+import {
+  type SessionContext,
+  type SessionSummary,
+} from "../src/lib/agent-protocol";
+import {
+  getRemoteAccessAction,
+  type RemoteAccessActionId,
+} from "../src/lib/remote-access";
+import {
+  shouldCloseOnExit,
+  type SessionCompletion,
+} from "../src/lib/session-completion";
 import { getAgentCommand } from "./agents";
 import { getSetupCommand } from "./setup-commands";
 
@@ -15,16 +25,34 @@ const MAX_SESSIONS = 12;
 
 type CommandDefinition = { command: string; args: string[] };
 
+type SessionDetails =
+  | {
+      kind: "agent";
+      agent: AgentId;
+      cwd: string;
+      completion?: SessionCompletion;
+      execution?: SessionContext;
+    }
+  | {
+      kind: "setup";
+      action: RemoteAccessActionId;
+      cwd: string;
+      completion?: SessionCompletion;
+    };
+
 export type TerminalSession = SessionSummary & {
   pty: IPty;
   buffer: string;
-  autoClose: boolean;
   stoppedByUser: boolean;
 };
 
 type SessionRegistryOptions = {
   onOutput: (session: TerminalSession, data: string) => void;
-  onExit: (session: TerminalSession, code: number) => void;
+  onExit: (
+    session: TerminalSession,
+    code: number,
+    summary: SessionSummary,
+  ) => void;
 };
 
 export class SessionRegistry {
@@ -36,26 +64,33 @@ export class SessionRegistry {
     return this.sessions.get(id);
   }
 
+  toSummary(session: TerminalSession): SessionSummary {
+    const base = {
+      id: session.id,
+      cwd: session.cwd,
+      state: session.state,
+      createdAt: session.createdAt,
+      ...(session.completion ? { completion: session.completion } : {}),
+      ...(session.stoppedByUser ? { stoppedByUser: true } : {}),
+    };
+
+    return session.kind === "agent"
+      ? {
+          ...base,
+          kind: "agent",
+          agent: session.agent,
+          ...(session.execution ? { execution: session.execution } : {}),
+        }
+      : {
+          ...base,
+          kind: "setup",
+          action: session.action,
+        };
+  }
+
   list(): SessionSummary[] {
     return [...this.sessions.values()]
-      .map((session) => session.kind === "agent"
-        ? {
-            id: session.id,
-            kind: "agent" as const,
-            agent: session.agent,
-            cwd: session.cwd,
-            state: session.state,
-            createdAt: session.createdAt,
-            ...(session.execution ? { execution: session.execution } : {}),
-          }
-        : {
-            id: session.id,
-            kind: "setup" as const,
-            action: session.action,
-            cwd: session.cwd,
-            state: session.state,
-            createdAt: session.createdAt,
-          })
+      .map((session) => this.toSummary(session))
       .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
   }
 
@@ -64,14 +99,14 @@ export class SessionRegistry {
     cwdInput: string,
     cols: number,
     rows: number,
-    autoClose = false,
+    completion?: SessionCompletion,
     initialPrompt?: string,
     execution?: SessionContext,
   ) {
     const cwd = await validateDirectory(cwdInput);
     return this.createSession(
       getAgentCommand(agent, initialPrompt),
-      { kind: "agent", agent, cwd, autoClose, execution },
+      { kind: "agent", agent, cwd, completion, execution },
       cols,
       rows,
     );
@@ -80,7 +115,12 @@ export class SessionRegistry {
   async createSetup(action: RemoteAccessActionId, cols: number, rows: number) {
     return this.createSession(
       await getSetupCommand(action),
-      { kind: "setup", action, cwd: os.homedir(), autoClose: false },
+      {
+        kind: "setup",
+        action,
+        cwd: os.homedir(),
+        completion: getRemoteAccessAction(action).completion,
+      },
       cols,
       rows,
     );
@@ -119,13 +159,14 @@ export class SessionRegistry {
 
   private createSession(
     definition: CommandDefinition,
-    details: { kind: "agent"; agent: AgentId; cwd: string; autoClose: boolean; execution?: SessionContext }
-      | { kind: "setup"; action: RemoteAccessActionId; cwd: string; autoClose: boolean },
+    details: SessionDetails,
     cols: number,
     rows: number,
   ) {
     if (this.sessions.size >= MAX_SESSIONS) {
-      throw new Error(`You can keep up to ${MAX_SESSIONS} sessions. Dismiss an exited session before starting another.`);
+      throw new Error(
+        `You can keep up to ${MAX_SESSIONS} sessions. Dismiss an exited session before starting another.`,
+      );
     }
 
     const pty = spawn(definition.command, definition.args, {
@@ -146,8 +187,8 @@ export class SessionRegistry {
       createdAt: new Date().toISOString(),
       pty,
       buffer: "",
-      autoClose: details.autoClose,
       stoppedByUser: false,
+      ...(details.completion ? { completion: details.completion } : {}),
       ...(details.kind === "agent"
         ? {
             kind: "agent",
@@ -167,10 +208,14 @@ export class SessionRegistry {
       }
 
       session.state = "exited";
-      if (session.autoClose && !session.stoppedByUser) {
+      const summary = this.toSummary(session);
+      if (
+        shouldCloseOnExit(session.completion, exitCode) &&
+        !session.stoppedByUser
+      ) {
         this.sessions.delete(session.id);
       }
-      this.options.onExit(session, exitCode);
+      this.options.onExit(session, exitCode, summary);
     });
 
     this.sessions.set(session.id, session);

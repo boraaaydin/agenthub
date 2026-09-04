@@ -8,12 +8,18 @@ import { BrandBar } from "../brand-bar";
 import { DEFAULT_AGENT_ID, getAgent, type AgentId } from "@/lib/agents";
 import { getRemoteAccessAction, type RemoteAccessActionId } from "@/lib/remote-access";
 import type { ClientMessage, SessionContext, SessionSummary } from "@/lib/agent-protocol";
+import {
+  completionNotice,
+  type SessionCompletion,
+  type SessionOutcomeNotice,
+} from "@/lib/session-completion";
 import { terminalSubmission } from "@/lib/terminal-input";
 import { TaskClosePrompt } from "./task-close-prompt";
 import { TaskCompletionAction } from "./task-completion-action";
 import { SessionInfo } from "./session-info";
 import { SessionSidebar } from "./session-sidebar";
 import { SessionTerminal } from "./session-terminal";
+import { SessionCompletionModal } from "./session-completion-modal";
 import { SessionLauncherFields } from "./session-launcher-fields";
 import { resolveSessionProject, type SessionProject } from "./session-project";
 import { useAgentSocket } from "./use-agent-socket";
@@ -44,6 +50,10 @@ export function AgentConsole() {
   const [newSession, setNewSession] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState("");
+  const [completion, setCompletion] = useState<{
+    notice: SessionOutcomeNotice;
+    exitCode: number;
+  } | null>(null);
   const [terminalReady, setTerminalReady] = useState(false);
   const terminalHostRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
@@ -129,11 +139,29 @@ export function AgentConsole() {
     setIsPromptVisible(false);
   }, [claimSession, trackPlanningSession]);
 
-  const onExit = useCallback((sessionId: string, code: number) => {
+  const onExit = useCallback((
+    sessionId: string,
+    code: number,
+    session: SessionSummary,
+  ) => {
     handlePlanningSessionExit(sessionId);
     handleSessionExit(sessionId);
-    if (activeSessionRef.current === sessionId && attachedSessionRef.current === sessionId) {
-      terminalRef.current?.write(`\r\n\x1b[33mSession exited with code ${code}.\x1b[0m\r\n`);
+
+    const notice = completionNotice(
+      session.stoppedByUser ? undefined : session.completion,
+      code,
+    );
+    if (notice) {
+      setCompletion({ notice, exitCode: code });
+    }
+
+    if (
+      activeSessionRef.current === sessionId &&
+      attachedSessionRef.current === sessionId
+    ) {
+      terminalRef.current?.write(
+        `\r\n\x1b[33mSession exited with code ${code}.\x1b[0m\r\n`,
+      );
     }
   }, [handlePlanningSessionExit, handleSessionExit]);
 
@@ -279,7 +307,7 @@ export function AgentConsole() {
     nextAgent: AgentId,
     project: Pick<ConsoleProject, "path">,
     nextPrompt: string,
-    autoClose = false,
+    completion?: SessionCompletion,
     context?: SessionContext,
     cwd = project.path,
   ) => {
@@ -296,7 +324,7 @@ export function AgentConsole() {
       cwd,
       cols: terminalRef.current?.cols ?? 80,
       rows: terminalRef.current?.rows ?? 24,
-      autoClose,
+      ...(completion ? { completion } : {}),
       initialPrompt: nextPrompt,
       ...(context ? { execution: context } : {}),
     })) {
@@ -381,7 +409,14 @@ export function AgentConsole() {
         setError(isLoadingProjects ? "Saved projects are still loading." : "Select a saved project before starting a session.");
         return;
       }
-      startSession(agent, selectedProject, value, false, undefined, selectedWorkingDirectory);
+      startSession(
+        agent,
+        selectedProject,
+        value,
+        undefined,
+        undefined,
+        selectedWorkingDirectory,
+      );
       return;
     }
 
@@ -580,6 +615,13 @@ export function AgentConsole() {
           </div>
         </div>
       </div>
+      {completion && (
+        <SessionCompletionModal
+          notice={completion.notice}
+          exitCode={completion.exitCode}
+          onClose={() => setCompletion(null)}
+        />
+      )}
     </main>
   );
 }

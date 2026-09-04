@@ -6,7 +6,6 @@ import {
   isClientMessage,
   type ClientMessage,
   type ServerMessage,
-  type SessionSummary,
 } from "./src/lib/agent-protocol";
 import { subscribeToWorkitemChanges } from "./src/lib/workitem-events";
 import { SessionRegistry } from "./server/session-registry";
@@ -30,14 +29,14 @@ const unsubscribeFromWorkitemChanges = subscribeToWorkitemChanges((change) => {
 
 const sessions = new SessionRegistry({
   onOutput: (session, data) => broadcast({ type: "output", sessionId: session.id, data }),
-  onExit: (session, code) => {
+  onExit: (session, code, summary) => {
     if (session.kind === "agent" && session.execution?.taskId) {
       const taskId = session.execution.taskId;
       void markExitedExecutionTaskExecuted(taskId).catch((error) => {
         console.error(`Unable to mark execution task #${taskId} as executed after session exit`, error);
       });
     }
-    broadcast({ type: "exit", sessionId: session.id, code });
+    broadcast({ type: "exit", sessionId: session.id, code, session: summary });
     broadcastSessions();
   },
 });
@@ -89,11 +88,11 @@ async function handleClientMessage(socket: WebSocket, message: ClientMessage) {
           message.cwd,
           message.cols,
           message.rows,
-          message.autoClose,
+          message.completion,
           message.initialPrompt,
           message.execution,
         );
-        send(socket, { type: "started", session: toSummary(session) });
+        send(socket, { type: "started", session: sessions.toSummary(session) });
         broadcastSessions();
       } catch (error) {
         send(socket, { type: "error", message: errorMessage(error) });
@@ -103,7 +102,7 @@ async function handleClientMessage(socket: WebSocket, message: ClientMessage) {
     case "start-setup": {
       try {
         const session = await sessions.createSetup(message.action, message.cols, message.rows);
-        send(socket, { type: "started", session: toSummary(session) });
+        send(socket, { type: "started", session: sessions.toSummary(session) });
         broadcastSessions();
       } catch (error) {
         send(socket, { type: "error", message: errorMessage(error) });
@@ -192,10 +191,6 @@ function sendUnknownSession(socket: WebSocket, sessionId: string) {
     sessionId,
     message: "This session is no longer available.",
   });
-}
-
-function toSummary(session: SessionSummary): SessionSummary {
-  return { ...session };
 }
 
 function broadcastSessions() {

@@ -13,7 +13,7 @@ type AgentSocketHandlers = {
   onSessions: (sessions: SessionSummary[]) => void;
   onOutput: (sessionId: string, data: string) => void;
   onScrollback: (sessionId: string, data: string) => void;
-  onExit: (sessionId: string, code: number) => void;
+  onExit: (sessionId: string, code: number, session: SessionSummary) => void;
   onError: (message: string, sessionId?: string) => void;
 };
 
@@ -72,7 +72,7 @@ export function useAgentSocket(handlers: AgentSocketHandlers) {
             handlersRef.current.onScrollback(message.sessionId, message.data);
             break;
           case "exit":
-            handlersRef.current.onExit(message.sessionId, message.code);
+            handlersRef.current.onExit(message.sessionId, message.code, message.session);
             break;
           case "error":
             handlersRef.current.onError(message.message, message.sessionId);

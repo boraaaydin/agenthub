@@ -44,10 +44,12 @@ Node server  ──  node-pty  ──  claude / codex / pi CLI process
 - **xterm.js** — renders the raw stream in the browser. Agent output contains ANSI escape
   codes (colors, cursor movement, spinners); xterm.js interprets them instead of showing them
   as garbage characters.
-- **Session registry** — server-side map of `sessionId → { pty, agent, cwd, buffer }`. The
-  buffer holds recent output so a reconnecting or newly-opened browser tab can replay
-  scrollback instead of seeing an empty screen. It is in-memory only; a server restart ends
-  active sessions.
+- **Session registry** — server-side map of `sessionId → { pty, agent, cwd, buffer, completion }`.
+  The optional client-safe session completion policy declares whether a session closes on exit and
+  its success/failure notices; shared helpers apply it to the exit code on the server and in the
+  console. The buffer holds recent output so a reconnecting or newly-opened browser tab can replay
+  scrollback instead of seeing an empty screen. It is in-memory only; a server restart ends active
+  sessions.
 
 Project metadata is persisted separately in a git-ignored `data/projects.json` file. Each project
 can own one or more applications, persisted separately in git-ignored `data/applications.json`; an
@@ -129,6 +131,7 @@ src/app/                         # Next.js application
 ├── console/                      # Multi-session console route and colocated client components
 │   ├── use-plan-execution.ts     # Tracks plan execution and task/plan close-out
 │   ├── use-plan-run.ts           # Starts a plan session from task URL parameters
+│   ├── session-completion-modal.tsx # Accessible exit-notice modal driven by a session completion policy
 │   ├── use-setup-run.ts          # Starts an allowlisted remote-access setup session from a URL parameter
 │   └── use-task-run.ts           # Starts a task-execution session from a plan URL parameter
 ├── projects/                     # Projects list, creation, and detail routes
@@ -152,6 +155,7 @@ src/lib/
 ├── default-settings-prompts.ts   # Server-only built-in prompt reader
 ├── prompt-tokens.ts              # Client-safe project prompt token resolution
 ├── remote-access.ts              # Client-safe remote-access method and setup-action catalogs
+├── session-completion.ts         # Shared session exit-policy types, validation, and outcome helpers
 ├── tailscale.ts                  # Server-only Tailscale CLI discovery and status probe
 ├── applications-store.ts         # Persisted per-project application records
 ├── plans-store.ts                # Persisted editable plan records
@@ -194,7 +198,12 @@ tasks in `.agent/tasks/` are archived by hand into
 
 - Agent selection (Codex, Claude Code, or Pi) is available per new console session. The prompt form appears below the terminal card and is hidden by default when a session is selected; it opens by default when starting a new session. Contextual sessions show their task or plan title beneath the project name, and the project path is available through an accessible session-information control.
 - Multiple concurrent sessions can run, be selected from the console sidebar, and retain their
-  individual in-memory scrollback until dismissed after exit. Allowlisted remote-access setup sessions run in the same PTY terminal, accept interactive input such as `sudo`, and remain available with their output after exit.
+  individual in-memory scrollback until dismissed after exit. Sessions may declare a completion
+  policy that closes them on a successful or any exit and shows its parameterized success or
+  failure notice in an accessible console modal. Allowlisted remote-access setup sessions run in
+  the same PTY terminal, accept interactive input such as `sudo`, and close after successful setup
+  with a modal that links back to remote-access settings; failed setup sessions remain available
+  with their output and report the exit code.
 - Settings includes a **Remote access** screen with an extensible method catalog. Its Tailscale method detects installation and tailnet connection status, shows tailnet URLs when connected, and starts visible install or connect setup sessions when needed. AgentHub adds no authentication for tailnet access.
 - Every project has a persisted task list with server-side URL pagination; project deletion can
   explicitly remove its tasks or leave them in place.

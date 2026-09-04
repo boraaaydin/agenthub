@@ -1,5 +1,9 @@
 import { isAgentId, type AgentId } from "./agents";
 import { isRemoteAccessActionId, type RemoteAccessActionId } from "./remote-access";
+import {
+  isSessionCompletion,
+  type SessionCompletion,
+} from "./session-completion";
 import type { WorkitemStatus } from "./workitem-filters";
 
 export type SessionState = "starting" | "running" | "exited";
@@ -15,6 +19,8 @@ type SessionBase = {
   cwd: string;
   state: SessionState;
   createdAt: string;
+  completion?: SessionCompletion;
+  stoppedByUser?: boolean;
 };
 
 export type AgentSessionSummary = SessionBase & {
@@ -37,7 +43,7 @@ export type ClientMessage =
       cwd: string;
       cols: number;
       rows: number;
-      autoClose?: boolean;
+      completion?: SessionCompletion;
       initialPrompt?: string;
       execution?: SessionContext;
     }
@@ -53,7 +59,7 @@ export type ServerMessage =
   | { type: "started"; session: SessionSummary }
   | { type: "scrollback"; sessionId: string; data: string }
   | { type: "output"; sessionId: string; data: string }
-  | { type: "exit"; sessionId: string; code: number }
+  | { type: "exit"; sessionId: string; code: number; session: SessionSummary }
   | { type: "workitem-changed"; projectId: string; workitemId: number; status: WorkitemStatus }
   | { type: "error"; message: string; sessionId?: string };
 
@@ -100,7 +106,7 @@ export function isClientMessage(value: unknown): value is ClientMessage {
         typeof message.cwd === "string" &&
         isDimension(message.cols, 500) &&
         isDimension(message.rows, 500) &&
-        (message.autoClose === undefined || typeof message.autoClose === "boolean") &&
+        (message.completion === undefined || isSessionCompletion(message.completion)) &&
         (message.initialPrompt === undefined ||
           (typeof message.initialPrompt === "string" &&
             message.initialPrompt.trim().length > 0 &&
